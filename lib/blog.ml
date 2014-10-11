@@ -20,25 +20,34 @@
 
 open Printf
 open Lwt
-open Cow
-open Atom_feed
+open Syndic
+open Config
+
+
+type blog = {
+  path : string ; (* complete path *)
+  icon: string ;
+  entries : entry list ;
+}
+
+and entry = {
+  updated: Date.date;
+  authors: Atom.author list;
+  subject: string;
+  permalink: string;
+  body: [ `Div] Html.elt;
+}
 
 (** An Atom feed: metadata plus a way to retrieve entries. *)
 (** A feed is made up of Entries. *)
 module Entry = struct
 
   (** An entry in a feed: metadata plus a filename [body]. *)
-  type t = {
-    updated: Date.date;
-    authors: Atom.author list;
-    subject: string;
-    permalink: string;
-    body: string;
-  }
+  type t = entry
 
   (** [permalink feed entry] returns the permalink URI for [entry] in [feed]. *)
-  let permalink feed entry =
-    sprintf "%s%s%s" feed.base_uri feed.id entry.permalink
+  let permalink blog entry =
+    sprintf "%s%s" blog.path entry.permalink
 
   (** Compare two entries. *)
   let compare a b =
@@ -46,96 +55,85 @@ module Entry = struct
 
   (** [to_html feed entry] converts a blog entry in the given feed into an
       Html.t fragment. *)
-  let to_html ~feed ~entry =
-    lwt content = feed.read_entry entry.body in
+  let to_html ~blog ~entry =
+    let content = entry.body in
     let permalink_disqus =
-      sprintf "%s%s#disqus_thread" feed.id entry.permalink
+      sprintf "%s%s#disqus_thread" blog.path entry.permalink
     in
     let authors =
       List.map (fun { Atom.name ; uri } ->
         let author_uri = match uri with
           | None -> Uri.of_string "" (* TODO *)
-          | Some uri -> Uri.of_string uri
+          | Some uri -> uri
         in
         name, author_uri)
       entry.authors
     in
     let date = Date.html_of_date entry.updated in
     let title =
-      let permalink = Uri.of_string (permalink feed entry) in
+      let permalink = Uri.of_string (permalink blog entry) in
       entry.subject, permalink
     in
-    return (Foundation.Blog.post ~title ~date ~authors ~content)
+    let content = (content : [`Div] Html.elt :> [>`Div] Html.elt) in
+    Foundation.Blog.post ~title ~date ~authors ~content
 
   (** [to_atom feed entry] *)
   let to_atom feed entry =
     let links = [
-      Atom.mk_link ~rel:`alternate ~typ:"text/html"
+      Atom.mk_link ~rel:Alternate ~type_media:"text/html"
         (Uri.of_string (permalink feed entry))
     ] in
-    let meta = {
-      Atom.id = permalink feed entry;
-      title = entry.subject;
-      subtitle = None;
-      author =
-        ( match entry.authors with
-          | [] -> None | author::_ -> Some author );
-      updated = Date.atom_date entry.updated;
-      rights = None;
-      links;
-    } in
-    feed.read_entry entry.body
-    >|= fun content ->
-    {
-      Atom.entry = meta;
-      summary = None;
-      base = None;
-      content
-    }
+    Atom.mk_entry
+      ~id:(permalink feed entry)
+      ~title:(Text entry.subject)
+      ~authors:(List.hd entry.authors, List.tl entry.authors) (*TOFIX*)
+      ~updated:(Date.atom_date entry.updated)
+      ~links
+      ~content:(Html.to_text entry.body)
+      ()
 
 end
 
 (** Entries separated by <hr /> tags *)
-let default_separator = <:html< <hr /> >>
+let default_separator = Html.hr ()
 
 (** [to_html ?sep feed entries] renders a series of entries in a feed, separated
     by [sep], defaulting to [default_separator]. *)
-let to_html ?(sep=default_separator) ~feed ~entries =
+let to_html ?(sep=default_separator) blog =
   let rec concat = function
-    | [] -> return <:html<&>>
+    | [] -> [Html.entity "&"]
     | hd::tl ->
-      lwt hd = Entry.to_html feed hd in
-      concat tl
-      >|= fun tl -> <:html< $hd$$sep$$tl$ >>
+      let hd = Entry.to_html blog hd in
+      let tl = concat tl in
+      hd :: sep :: tl
   in
-  concat (List.sort Entry.compare entries)
+  concat (List.sort Entry.compare blog.entries)
 
 
 (** [to_atom feed entries] generates a time-ordered ATOM RSS [feed] for a
     sequence of [entries]. *)
-let to_atom ~feed ~entries =
-  let { title; subtitle; base_uri; id; rights } = feed in
-  let id = base_uri ^ id in
-  let mk_uri x = Uri.of_string (id ^ x) in
+let to_atom ~config:{Config. authors ; rights ; title ; subtitle } ~blog =
+  let mk_uri x = Uri.of_string (blog.path ^ x) in
 
-  let entries = List.sort Entry.compare entries in
-  let updated = Date.atom_date (List.hd entries).Entry.updated in
+  let entries = List.sort Entry.compare blog.entries in
+  let updated = Date.atom_date (List.hd entries).updated in
   let links = [
-    Atom.mk_link (mk_uri "atom.xml");
-    Atom.mk_link ~rel:`alternate ~typ:"text/html" (mk_uri "")
+    Atom.mk_link ~rel:Alternate (mk_uri "atom.xml");
+    Atom.mk_link ~rel:Alternate ~type_media:"text/html" (mk_uri "")
   ] in
-  let atom_feed = { Atom.id; title; subtitle;
-    author=feed.author; rights; updated; links }
-  in
-  lwt entries = Lwt_list.map_s (Entry.to_atom feed) entries in
-  return { Atom.feed=atom_feed; entries }
+  let entries = List.map (Entry.to_atom blog) entries in
+  Atom.mk_feed
+    ~title:(Text title) (* ?subtitle *) ?rights ~updated ~links (* from config *)
+    ~id:blog.path
+    ~authors
+    entries
 
 (** [recent_posts feed entries] . *)
-let recent_posts ?(active="") feed entries =
+let recent_posts ?(active="") blog entries =
   let entries = List.sort Entry.compare entries in
   List.map (fun e ->
-      let link = Entry.(e.subject, Uri.of_string (Entry.permalink feed e)) in
-      if e.Entry.subject = active then
+      let link = Entry.(e.subject, Uri.of_string (Entry.permalink blog e)) in
+      if e.subject = active then
         `active_link link
       else
         `link link

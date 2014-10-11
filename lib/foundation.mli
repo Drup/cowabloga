@@ -19,12 +19,13 @@ module Link : sig
   type t = string * Uri.t
   type links = t list
 
-  val link : ?cl:string -> string * Uri.t -> Cow.Xml.t
+  val link : ?cl:string list -> t -> [> `A of [> `PCDATA ] ] Html.elt
 
-  val top_nav : ?align:[< `Left | `Right > `Right ] -> links -> Cow.Xml.t
-  val button_group : links -> Cow.Xml.t
-  val side_nav : links -> Cow.Xml.t
-  val bottom_nav : links -> Cow.Xml.t
+  val top_nav : ?align:[< `Left | `Right > `Right ] -> links
+    -> [> Html5_types.ul ] Html.elt
+  val button_group : links -> [> Html5_types.ul ] Html.elt
+  val side_nav : links -> [> Html5_types.ul ] Html.elt
+  val bottom_nav : links -> [> Html5_types.ul ] Html.elt
 end
 
 module Sidebar : sig
@@ -33,28 +34,40 @@ module Sidebar : sig
     | `divider
     | `link of Link.t
     | `text of string
-    | `html of Cow.Html.t
+    | `html of Html5_types.li_content Html.elt
   ]
-  val t : title:string -> content:t list -> Cow.Xml.t
+  val t : title:string -> content:t list -> [> `H5 | `Ul ] Html.elt list
 end
 
 module Index : sig
-  val t: top_nav:Cow.Html.t -> Cow.Html.t
+  val t: top_nav:([> `Br | `Div ] as 'a) Html.elt -> 'a Html.elt list
 end
 
 module Blog : sig
-  val post: title:string * Uri.t -> authors:(string * Uri.t) list -> date:Cow.Html.t -> content:Cow.Html.t -> Cow.Html.t
+  val post:
+    title:string * Uri.t -> authors:(string * Uri.t) list ->
+    date:([< Html5_types.article_content_fun > `H4 `P ] as 'a) Html.elt ->
+    content:'a Html.elt -> [> Html5_types.article ] Html.elt
 
-  val t: title:string -> subtitle:string option -> sidebar:Cow.Html.t -> posts:Cow.Html.t -> copyright:Cow.Html.t -> unit -> Cow.Html.t
+  val t:
+    title:string ->
+    ?subtitle:string ->
+    sidebar:[< Html5_types.aside_content_fun ] Html.elt list ->
+    posts:[< Html5_types.div_content_fun ] Html.elt list ->
+    copyright:[< Html5_types.small_content_fun > `PCDATA ] Html.elt ->
+    unit -> [> `Div | `Footer ] Html.elt list
 
 end
 
 val body:
-  ?google_analytics:(string * string) -> ?highlight:string
-  -> title:string
-  -> headers:Cow.Html.t -> content:Cow.Html.t -> trailers:Cow.Html.t
-  -> unit -> Cow.Html.t
+  ?google_analytics:(string * string) -> ?highlight:string -> title:string ->
+  headers:Html5_types.head_content_fun Html.elt list ->
+  content:([< Html5_types.body_content_fun > `Script ] as 'c) Html.elt ->
+  trailers:'c Html.elt list -> unit -> [> `Html ] Html.elt
 
-val top_nav : title:Cow.Html.t -> title_uri:Uri.t -> nav_links:Cow.Html.t -> Cow.Html.t
+val top_nav :
+  title:string -> title_uri:string ->
+  nav_links:[< Html5_types.section_content_fun ] Html.elt list ->
+  [> Html5_types.div ] Html.elt
 
-val page: body:Cow.Html.t -> string
+val page: body:'a Html5.M.elt -> string

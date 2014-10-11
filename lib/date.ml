@@ -15,9 +15,10 @@
  *
  *)
 
-open Cow
 open Printf
 open Lwt
+
+let soi = string_of_int
 
 type month = int
 
@@ -45,8 +46,7 @@ let long_string_of_month m =
   | 12 -> "December"
   | _  -> "???"
 
-let xml_of_month m =
-  <:xml<$str:short_string_of_month m$>>
+let xml_of_month m = Html.pcdata @@ short_string_of_month m
 
 type date = {
   month : month;
@@ -54,21 +54,23 @@ type date = {
   year  : int;
   hour  : int;
   min   : int;
-} with xml
+}
 
 let html_of_date d =
-  <:xml<$int:d.day$ $str:long_string_of_month d.month$ $int:d.year$>>
+  let open Html in
+  span [pcdata @@ soi d.day ;
+        pcdata @@ long_string_of_month d.month ;
+        pcdata @@ soi d.year]
 
 let html_of_date d =
-  <:xml<
-    <div class="date">
-      <div class="month">$xml_of_month d.month$</div>
-      <div class="day">$int:d.day$</div>
-      <div class="year">$int:d.year$</div>
-      <div class="hour">$int:d.hour$</div>
-      <div class="min">$int:d.min$</div>
-    </div>
-  >>
+  let open Html in
+  div ~a:[a_class ["date"]] [
+    div ~a:[a_class ["month"]] [xml_of_month d.month] ;
+    div ~a:[a_class ["day"]]   [pcdata @@ soi d.day] ;
+    div ~a:[a_class ["year"]]  [pcdata @@ soi d.year] ;
+    div ~a:[a_class ["hour"]]  [pcdata @@ soi d.hour] ;
+    div ~a:[a_class ["min"]]   [pcdata @@ soi d.min ] ;
+]
 
 let date (year, month, day, hour, min) =
   { month; day; year; hour; min }
@@ -77,4 +79,4 @@ let day (year, month, day) =
   { month; day; year; hour=0; min=0 }
 
 let atom_date d =
-  ( d.year, d.month, d.day, d.hour, d.min)
+  CalendarLib.Calendar.make d.year d.month d.day d.hour d.min 0

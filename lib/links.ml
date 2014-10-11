@@ -20,66 +20,74 @@ open Printf
 open Lwt
 open Date
 open Syndic
+open Config
 
-(** Link stream *)
-type stream = {
-  name: string;
-  icon: string;
+type t = {
+  path : string ; (* complete path *)
+  entries : link list ;
 }
 
-(* Individual link *)
-type t = {
-  author: Atom.author ;
+and link = {
+  author: Person.t ;
   id: string;
   uri: Uri.t;
   title: string;
   date: Date.date;
-  stream: stream;
+  source : source ;
 }
 
-let permalink config l =
-  sprintf "%slinks/%s/%s" config.Config.base_uri l.stream.name l.id
+and source = {
+  name : string ;
+  icon : string ;
+}
 
-let atom_entry_of_link config l =
-  let perma_uri = Uri.of_string (permalink config l) in
-  let links = [
-   (*  Atom.mk_link ~rel:`alternate ~typ:"text/html" perma_uri; *)
-    Atom.mk_link ~rel:Alternate ~type_media:"text/html" l.uri;
-  ] in
-  let content =
-    Html.(span [
-      a ~a:[a_href @@ Uri.to_string l.uri] [pcdata l.title] ;
-      pcdata ", from" ; pcdata l.stream.name ;
-    ])
-  in
-  Lwt.return @@
-  Atom.mk_entry
-    ~id:(Uri.to_string perma_uri)
-    ~title:(Text l.title)
-    ~updated:(atom_date l.date)
-    ~authors:(l.author, [])
-    ?rights:config.rights
-    ~links
-    ~content:(Html.to_text content)
-    ()
+module Entry = struct
 
-let cmp_ent a b =
-  compare (atom_date a.date) (atom_date b.date)
+  type t = link
 
-let to_atom ~config ~entries =
-  let {Config. title; subtitle; base_uri; id; rights; authors } = config in
+  let permalink list l =
+    sprintf "%s%s" list.path l.id
+
+  let compare a b =
+    compare (atom_date a.date) (atom_date b.date)
+
+  let to_atom config list l =
+    let perma_uri = Uri.of_string (permalink list l) in
+    let links = [
+      (*  Atom.mk_link ~rel:`alternate ~typ:"text/html" perma_uri; *)
+      Atom.mk_link ~rel:Alternate ~type_media:"text/html" l.uri;
+    ] in
+    let content =
+      Html.(span [
+          a ~a:[a_href @@ Uri.to_string l.uri] [pcdata l.title] ;
+          pcdata ", from" ; pcdata l.source.name ;
+        ])
+    in
+    Atom.mk_entry
+      ~id:(Uri.to_string perma_uri)
+      ~title:(Text l.title)
+      ~updated:(atom_date l.date)
+      ~authors:(l.author, [])
+      ?rights:config.rights
+      ~links
+      ~content:(Html.to_text content)
+      ()
+
+end
+
+let to_atom ~config ~links:list =
+  let {Config. title; subtitle; base_uri; rights; authors } = config in
   let mk_uri x = Uri.of_string (base_uri ^ x) in
-  let es = List.rev (List.sort cmp_ent entries) in
+  let es = List.rev (List.sort Entry.compare list.entries) in
   let updated = atom_date (List.hd es).date in
   let id = base_uri ^ "links/" in
   let links = [
     Atom.mk_link ~rel:Alternate (mk_uri "atom.xml");
     Atom.mk_link ~rel:Alternate ~type_media:"text/html" (mk_uri "")
   ] in
-  lwt entries = Lwt_list.map_s (atom_entry_of_link config) es in
-  Lwt.return @@
+  let entries = List.map (Entry.to_atom config list) es in
   Atom.mk_feed
-    ~id ~title ?subtitle
+    ~id ~title:(Text title) (* ?subtitle *)
     ?rights ~updated ~links
     ~authors
     entries

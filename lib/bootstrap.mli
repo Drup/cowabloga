@@ -17,7 +17,7 @@
 
 val body:
   ?google_analytics:(string * string)
-  -> title:string -> headers:Cow.Html.t -> Cow.Html.t
-  -> Cow.Html.t
+  -> title:string -> headers:'a Html.elt -> 'a Html.elt
+  -> 'a Html.elt
 
-val page: ?ns:string -> Cow.Html.t -> string
+val page: ?ns:string -> 'a Html.elt -> string

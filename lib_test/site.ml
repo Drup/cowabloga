@@ -1,43 +1,54 @@
 open Cowabloga
 open Lwt
+open Config
 
-let read_entry ent =
+let read_file ent =
   match Mirage_entries.read ent with
-  | None -> return <:html<$str:"???"$>>
-  | Some b -> return (Cow.Markdown.of_string b)
+  | None -> return @@ Html.(div [pcdata ""])
+  | Some b -> return (Html.Unsafe.data @@ Omd.to_html @@ Omd.of_string b)
 
-let config = {
-  Atom_feed.base_uri="http://localhost:8081";
-  id = "";
+
+
+
+let rec config = {
+  base_uri="http://localhost:8081";
   title = "The Mirage Blog";
   subtitle = Some "on building functional operating systems";
   rights = Mirage_people.rights;
-  author = None;
-  read_entry
+  authors = [];
+  read_file ;
+  content ;
 }
 
-let posts = Lwt_unix.run (Blog.to_html config Mirage_blog.entries)
+and content =
+  `Menu (
+    `Html (fun () -> index),
+    [
+    "Blog", `Blog "/blog";
+    "Docs", `Wiki "/docs";
+    "API" , `Page "/api";
+    "Community", `Page "/community";
+    "About", `Page "/about";
+    ])
 
-let nav_links = [
-    "Blog", Uri.of_string "/blog";
-    "Docs", Uri.of_string "/docs";
-    "API", Uri.of_string "/api";
-    "Community", Uri.of_string "/community";
-    "About", Uri.of_string "/about";
-  ]
 
-let top_nav =
+
+
+(* let posts = Lwt_unix.run (Blog.to_html config Mirage_blog.entries) *)
+
+
+and top_nav =
   Foundation.top_nav
-    ~title:<:html<"Mirage OS">>
-    ~title_uri:(Uri.of_string "/")
-    ~nav_links:(Foundation.Link.top_nav ~align:`Left nav_links)
+    ~title:"Mirage OS"
+    ~title_uri:"/"
+    ~nav_links:[Foundation.Link.top_nav ~align:`Left nav_links]
 
-let t =
+and blog_template blog post =
   let recent_posts = Blog.recent_posts config Mirage_blog.entries in
   let sidebar = Foundation.Sidebar.t ~title:"Recent Posts" ~content:recent_posts in
-  let copyright = <:html<Anil Madhavapeddy>> in
-  let { Atom_feed.title; subtitle } = config in
-  Foundation.Blog.t ~title ~subtitle ~sidebar ~posts ~copyright ()
+  let copyright = Html.pcdata "Anil Madhavapeddy" in
+  let {Config. title; subtitle } = config in
+  Foundation.Blog.t ~title ?subtitle ~sidebar ~posts ~copyright ()
 
 let index =
   let content = Foundation.Index.t ~top_nav in
@@ -45,7 +56,7 @@ let index =
   Foundation.page ~body
 
 let blog =
-  let headers = <:html< >> in
+  let headers = [] in
   let content = top_nav @ t in
   let body = Foundation.body ~title:"Mirage Musings" ~headers ~content ~trailers:[] () in
   Foundation.page ~body

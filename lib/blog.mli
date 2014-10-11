@@ -16,32 +16,35 @@
  *
  *)
 
+open Syndic
+
+type blog = {
+  path : string ; (* complete path *)
+  icon: string ;
+  entries : entry list ;
+}
+
+and entry = {
+  updated: Date.date;
+  authors: Atom.author list;
+  subject: string;
+  permalink: string;
+  body: [ `Div] Html.elt;
+}
+
 module Entry : sig
-  type t = {
-    updated : Date.date;
-    authors : Cow.Atom.author list;
-    subject : string;
-    permalink : string;
-    body : string;
-  }
-  val permalink : Atom_feed.t -> t -> string
+  type t = entry
+  val permalink : blog -> entry -> string
   val compare : t -> t -> int
-  val to_html : feed:Atom_feed.t -> entry:t -> Cow.Html.t Lwt.t
-  val to_atom : Atom_feed.t -> t -> Cow.Atom.entry Lwt.t
+  val to_html : blog:blog -> entry:entry -> [> Html5_types.article ] Html.elt
+  val to_atom : blog -> entry -> Syndic.Atom.entry
 end
 
 val to_html :
-  ?sep:Cow.Xml.t ->
-  feed:Atom_feed.t ->
-  entries:Entry.t list ->
-  Cow.Xml.t Lwt.t
+  ?sep:([> `Article | `Hr | `PCDATA ] as 'a) Html.elt ->
+  blog -> 'a Html5.M.elt list
 
-val to_atom :
-  feed:Atom_feed.t ->
-  entries:Entry.t list ->
-  Cow.Atom.feed Lwt.t
+val to_atom : config:Config.t -> blog:blog -> Syndic.Atom.feed
 
 val recent_posts :
-  ?active:string ->
-  Atom_feed.t ->
-  Entry.t list -> Foundation.Sidebar.t list
+  ?active:string -> blog -> Entry.t list -> Foundation.Sidebar.t list

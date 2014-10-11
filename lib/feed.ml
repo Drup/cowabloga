@@ -17,76 +17,57 @@
 
 (** Generate an aggregated link feed from all the other feeds *)
 open Lwt
-open Cow
+open Syndic
+open Config
 
-type feed = [
-  | `Blog of Atom_feed.t * Blog.Entry.t list
-  | `Wiki of Atom_feed.t * Wiki.entry list
-  | `Links of Atom_feed.t * Links.t list
-]
+(* let feed_icon = *)
+(*   function *)
+(*   | `Blog _ -> "fa-comment" *)
+(*   | `Wiki _ -> "fa-book" *)
+(*   | `Links _ -> "fa-external-link" *)
 
-let feed_icon =
-  function
-  | `Blog _ -> "fa-comment"
-  | `Wiki _ -> "fa-book"
-  | `Links _ -> "fa-external-link"
+(*   | `Blog f -> f.Atom.id ^ "blog/" (\* TODO: Proper URL routing *\) *)
+(*   | `Wiki f -> f.Atom.id ^ "wiki/" *)
+(*   | `Links f -> f.Atom.id ^ "links/" *)
 
-let feed_uri =
-  function
-  | `Blog f -> f.Atom_feed.base_uri ^ "blog/" (* TODO: Proper URL routing *)
-  | `Wiki f -> f.Atom_feed.base_uri ^ "wiki/"
-  | `Links f -> f.Atom_feed.base_uri ^ "links/"
 
-let to_atom_entries (feeds:feed list) =
-  Lwt_list.map_s (
+
+let agregate ?(name="updates/atom.xml") ~config ~feeds =
+  let l =
+    List.map (
     function
-    | `Blog (feed,entries) ->
-        Blog.to_atom ~feed ~entries
-        >|= fun c -> List.map (fun e -> (e, `Blog feed)) c.Atom.entries
-    | `Wiki (feed,entries) ->
-        Wiki.to_atom ~feed ~entries
-        >|= fun c -> List.map (fun e -> (e, `Wiki feed)) c.Atom.entries
-    | `Links (feed,entries) ->
-        Links.to_atom ~feed ~entries
-        >|= fun c -> List.map (fun e -> (e, `Links feed)) c.Atom.entries
+    | `Blog blog ->
+        (Some (Uri.of_string blog.Blog.path), Blog.to_atom ~config ~blog)
+    | `Wiki wiki ->
+        (Some (Uri.of_string wiki.Wiki.path), Wiki.to_atom ~config ~wiki)
+    | `Links links ->
+        (Some (Uri.of_string links.Links.path), Links.to_atom ~config ~links)
   ) feeds
-  >|= List.flatten
-  >|= List.sort (fun (a,_) (b,_) -> Atom.(compare b.entry.updated a.entry.updated))
+  in
+  Atom.aggregate
+    ~id:(config.base_uri ^ name)
+    ~title:(Text config.title)
+    (* ?subtitle:config.subtitle *)
+    l
 
-let to_html ?limit feeds =
-  let open Atom in
-  to_atom_entries feeds
-  >|= List.mapi (fun i ({entry}, info) ->
-    let fa = Printf.sprintf "fa-li fa %s" (feed_icon info) in
-    (* Find an alternate HTML link *)
-    try
-      (match limit with |Some x when i > x -> raise Not_found |_ -> ());
-      let uri =
-        let l = List.find (fun l -> l.rel = `alternate && l.typ = Some "text/html") entry.links in
-        l.href in
-      let (y,m,d,_,_) = entry.updated in
-      let date = Printf.sprintf "(%d %s %d)" d (Date.short_string_of_month m) y in
-      <:html<
-       <li><a href=$str:feed_uri info$><i class=$str:fa$> </i></a>
-        <a href=$uri:uri$>$str:entry.title$</a>
-        <i class="front_date">$str:date$</i></li>&>>
-    with Not_found ->
-      <:html< >>)
-  >|= fun fs ->
-  <:html<<ul class="fa-ul">$list:fs$</ul>&>>
 
-let permalink feed id = Printf.sprintf "%supdates/%s" feed.Atom_feed.base_uri id
-let to_atom ~meta ~feeds =
-    let open Atom_feed in
-    let { title; subtitle; base_uri; id; rights } = meta in
-    let id = base_uri ^ id in
-    lwt entries = to_atom_entries feeds >|= List.map fst in
-    let updated = (List.hd entries).Atom.entry.Atom.updated in
-    let links = [
-      Atom.mk_link (Uri.of_string (permalink meta "atom.xml"));
-      Atom.mk_link ~rel:`alternate ~typ:"text/html" (Uri.of_string base_uri)
-    ] in
-    let atom_feed = { Atom.id; title; subtitle; author=meta.author;
-      rights; updated; links }
-    in
-    return { Atom.feed=atom_feed; entries }
+(* let to_html ?limit feeds = *)
+(*   let open Atom in *)
+(*   to_atom_entries feeds *)
+(*   >|= List.mapi (fun i ({entry}, info) -> *)
+(*     let fa = Printf.sprintf "fa-li fa %s" (feed_icon info) in *)
+(*     (\* Find an alternate HTML link *\) *)
+(*     try *)
+(*       (match limit with |Some x when i > x -> raise Not_found |_ -> ()); *)
+(*       let uri = *)
+(*         let l = List.find (fun l -> l.rel = `alternate && l.typ = Some "text/html") entry.links in *)
+(*         l.href in *)
+(*       let (y,m,d,_,_) = entry.updated in *)
+(*       let date = Printf.sprintf "(%d %s %d)" d (Date.short_string_of_month m) y in *)
+(*       Html.[ *)
+(*         li [a ~a:[a_href "feed_uri info"]] [i ~a:[a_class [fa]] []] ; *)
+(*         a ~a:[a_href @@ Uri.to_string uri] [pcdata entry.title] ; *)
+(*         i ~a:[a_class ["front_date"]] [pcdata date] *)
+(*       ] *)
+(*     with Not_found -> []) *)
+(*   >|= fun fs -> Html.(ul ~a:[a_class ["fa-ul"]] fs) *)

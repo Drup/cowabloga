@@ -5,4 +5,7 @@ B _build/lib
 PKG findlib
 PKG cohttp
 PKG lwt
-PKG cow
+PKG syndic
+PKG tyxml
+
+FLG lwt

@@ -18,12 +18,13 @@
 module Link = struct
   type t = string * Uri.t
   type links = t list
-  let link ?(cl="") (txt,uri) =
-    <:html<<a href=$uri:uri$ class=$str:cl$>$str:txt$</a>&>>
+
+  let link ?(cl=[]) (txt,uri) =
+    Html.(a ~a:[a_href @@ Uri.to_string uri; a_class cl] [pcdata txt])
 
   let mk_ul_links ~cl ~links =
-    let items = List.map (fun l -> <:html<<li>$l$</li>&>>) links in
-    <:html<<ul class=$str:cl$>$list:items$</ul>&>>
+    let items = List.map (fun x -> Html.li [x]) links in
+    Html.(ul ~a:[a_class [cl]] items)
 
   let top_nav ?(align=`Right) (links:links) =
     let links = List.map link links in
@@ -31,7 +32,7 @@ module Link = struct
     mk_ul_links ~cl ~links
 
   let button_group (links:links) =
-    let links = List.map (link ~cl:"button") links in
+    let links = List.map (link ~cl:["button"]) links in
     mk_ul_links ~cl:"button-group" ~links
 
   let side_nav (links:links) =
@@ -45,45 +46,41 @@ end
 
 module Sidebar = struct
   type t = [
-   | `link of Link.t
-   | `active_link of Link.t
-   | `divider
-   | `text of string
-   | `html of Cow.Xml.t
+    | `link of Link.t
+    | `active_link of Link.t
+    | `divider
+    | `text of string
+    | `html of Html5_types.li_content Html.elt
   ]
 
-  let t ~title ~content =
+  let t ~title:my_title ~content =
     let to_html (x:t) =
       match x with
-      |`link l -> <:html<<li>$Link.link l$</li>&>>
-      |`active_link l -> <:html<<li class="active">$Link.link l$</li>&>>
-      |`divider -> <:html<<li class="divider" />&>>
-      |`html h -> <:html<<li>$h$</li>&>>
-      |`text t -> <:html<<li>$str:t$</li>&>>
+        |`link l -> Html.(li [Link.link l])
+        |`active_link l -> Html.(li ~a:[a_class ["active"]] [Link.link l])
+        |`divider -> Html.(li ~a:[a_class ["divider"]] [])
+        |`html h -> Html.(li [h])
+        |`text t -> Html.(li [pcdata t])
     in
-    let rec make = function
-      | [] -> Cow.Html.nil
-      | hd::tl -> <:html<$to_html hd$$make tl$>>
-    in
-    <:html<<h5>$str:title$</h5>
-      <ul class="side-nav">
-        $make content$
-      </ul>
-   >>
+    Html.[
+      h5 [pcdata my_title] ;
+      ul ~a:[a_class ["side-nav"]] (List.map to_html content)
+    ]
 end
 
 module Index = struct
   let t ~top_nav =
-    let content = <:html<
-      $top_nav$
-      <br />
-      <div class="row">
-        <div class="large-12 columns">
-          <img src="http://placehold.it/1000x400&amp;text=img"></img>
-          <hr />
-        </div>
-      </div>
-    >>
+    let content =
+      Html.[
+        top_nav ;
+        br () ;
+        div ~a:[a_class ["row"]] [
+          div ~a:[a_class ["large-12 columns"]] [
+            img ~alt:"" ~src:"http://placehold.it/1000x400&amp;text=img" () ;
+            hr ()
+          ]
+        ]
+      ]
     in
     content
 end
@@ -97,73 +94,68 @@ module Blog = struct
   let post ~title ~authors ~date ~content =
     let open Link in
     let author = match authors with
-      | [] -> <:html< >>
+      | [] -> []
       | _  ->
-          let a_nodes = intercalate <:html<, >> (List.map link authors) in
-          <:html<By $list: a_nodes$>>
+          let a_nodes = intercalate (Html.pcdata ", ") (List.map link authors) in
+          Html.(pcdata "By " :: a_nodes)
     in
     let title_text, title_uri = title in
-    <:html<
-      <article>
-        $date$
-        <h4><a href=$uri:title_uri$>$str:title_text$</a></h4>
-        <p><i>$author$</i></p>
-        $content$
-      </article>
-    >>
+    Html.(
+      article [
+        date ;
+        h4 [a ~a:[a_href @@ Uri.to_string title_uri] [pcdata title_text]] ;
+        p [i author] ;
+        content
+      ]
+    )
 
-  let t ~title ~subtitle ~sidebar ~posts ~copyright () =
+  let t ~title:title_ ?subtitle ~sidebar ~posts ~copyright () =
     let subtitle =
       match subtitle with
-      | None -> <:html<&>>
-      | Some s -> <:html<<small>$str:s$</small>&>>
+        | None -> []
+        | Some s -> Html.[small [pcdata s]]
     in
-    <:html<
-    <div class="row">
-      <div class="large-9 columns">
-        <h2>$str:title$ $subtitle$</h2>
-      </div>
-    </div>
-    <div class="row">
-      <div class="small-12 large-9 columns" role="content">
-        $posts$
-      </div>
-      <aside class="small-12 large-3 columns panel">
-        $sidebar$
-      </aside>
-    </div>
-    <footer class="row">
-      <div class="large-12 columns">
-        <hr />
-        <div class="row">
-          <div class="large-6 columns">
-            <p><small>&copy; Copyright $copyright$</small></p>
-          </div>
-        </div>
-      </div>
-    </footer>
-    >>
+    Html.[
+      div ~a:[a_class ["row"]] [
+        div ~a:[a_class ["large-9 columns"]] [
+          h2 (pcdata title_ :: subtitle)
+        ]
+      ] ;
+      div ~a:[a_class ["row"]] [
+        div ~a:[a_class ["small-12"; "large-9"; "columns"]] posts ;
+        aside ~a:[a_class ["small-12"; "large-3"; "columns"; "panel"]] sidebar
+      ] ;
+      footer ~a:[a_class ["row"]] [
+        div ~a:[a_class ["large-12"; "columns"]] [
+          hr () ;
+          div ~a:[a_class ["row"]] [
+            div ~a:[a_class ["large-6"; "columns"]] [
+              p [small [entity "copy"; pcdata " Copyright" ; copyright]]
+            ]
+          ]
+        ]
+      ]
+    ]
 end
 
 let body ?google_analytics ?highlight
-      ~title ~headers ~content ~trailers () =
-  (* Cannot be inlined below as the $ is interpreted as an antiquotation *)
-  let js_init = [`Data "$(document).foundation();"] in
+    ~title:my_title ~headers ~content ~trailers () =
+
   let highlight_css, highlight_trailer = match highlight with
-    | None -> <:html< >>, <:html< >>
-    | Some style ->
-      <:html< <link rel="stylesheet" href="$str:style$"> </link> >>,
-      <:html<
-        <script src="/js/vendor/highlight.pack.js"> </script>
-        <script> hljs.initHighlightingOnLoad(); </script>
-      >>
+    | None -> [], []
+    | Some my_style ->
+        Html.[link ~rel:[`Stylesheet] ~href:my_style ()],
+        Html.[
+            script ~a:[a_src "/js/vendor/highlight.pack.js"] (pcdata "") ;
+            script (pcdata "hljs.initHighlightingOnLoad();")
+          ]
   in
   let ga =
     match google_analytics with
-    | None -> []
-    | Some (a,d) -> <:html<
-         <script type="text/javascript">
-           //<![CDATA[
+      | None -> []
+      | Some (a,d) -> Html.[
+         script ~a:[a_mime_type "text/javascript"]
+           (pcdata "//<![CDATA[
            var _gaq = _gaq || [];
            _gaq.push(['_setAccount', '$[`Data a]$']);
            _gaq.push(['_setDomainName', '$[`Data d]$']);
@@ -174,51 +166,51 @@ let body ?google_analytics ?highlight
               ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
               var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
             })();
-           //]]>
-         </script> >>
+           //]]>")
+        ]
   in
-  <:html<
-    <head>
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width"/>
-      <title>$str:title$</title>
-      <link rel="stylesheet" href="/css/foundation.min.css"> </link>
-      <link rel="stylesheet" href="/css/site.css"> </link>
-      <script src="/js/vendor/custom.modernizr.js"> </script>
-      $highlight_css$
-      $ga$
-      $headers$
-    </head>
-    <body>
-      $content$
-      <script src="/js/vendor/jquery.min.js"> </script>
-      <script src="/js/foundation/foundation.min.js"> </script>
-      <script src="/js/foundation/foundation.topbar.js"> </script>
-      <script> $js_init$ </script>
-      $highlight_trailer$
-      $trailers$
-    </body>
-  >>
+  Html.(
+    html
+      (head (title (pcdata my_title)) (
+          meta ~a:[a_charset "utf-8"] () ::
+          meta ~a:[a_name "viewport"; a_content "width=device-width"] () ::
+          link ~rel:[`Stylesheet] ~href:"/css/foundation.min.css" () ::
+          link ~rel:[`Stylesheet] ~href:"/css/site.css" () ::
+          script ~a:[a_src "/js/vendor/custom.modernizr.js"] (pcdata "") ::
+          highlight_css @
+          ga @
+          headers
+        ))
+      (body (
+          content ::
+          script ~a:[a_src "/js/vendor/jquery.min.js"] (pcdata "") ::
+          script ~a:[a_src "/js/foundation/foundation.min.js"] (pcdata "") ::
+          script ~a:[a_src "/js/foundation/foundation.topbar.js"] (pcdata "") ::
+          script (pcdata "$(document).foundation();") ::
+          highlight_trailer @
+          trailers
+        ))
+  )
 
-let top_nav ~title ~title_uri ~nav_links =
-  <:html<
-    <div class="contain-to-grid fixed">
-    <nav class="top-bar" data-topbar="">
-    <ul class="title-area">
-    <li class="name"><h1><a href="$uri:title_uri$">$title$</a></h1></li>
-    <li class="toggle-topbar menu-icon"><a href="#"><span>Menu</span></a></li>
-    </ul>
-    <section class="top-bar-section">
-      $nav_links$
-    </section>
-    </nav>
-    </div>
-  >>
+let top_nav ~title:my_title ~title_uri ~nav_links =
+  Html.(
+    div ~a:[a_class ["contain-to-grid fixed"]] [
+      nav ~a:[a_class ["top-bar"]] [
+        ul ~a:[a_class ["title-area"]] [
+          li ~a:[a_class ["name"]] [h1 [a ~a:[a_href title_uri] [pcdata my_title]]] ;
+          li ~a:[a_class ["toggle-topbar menu-icon"]] [
+            a ~a:[a_href "#"] [span [pcdata "Menu"]]]
+        ] ;
+        section ~a:[a_class ["top-bar-section"]] nav_links
+      ]
+    ]
+  )
 
 let page ~body =
-  Printf.sprintf "\
-<!DOCTYPE html>
-  <!--[if IE 8]><html class=\"no-js lt-ie9\" lang=\"en\" xmlns=\"http://www.w3.org/1999/xhtml\"><![endif]-->
-  <!--[if gt IE 8]><!--><html class=\"no-js\" lang=\"en\" xmlns=\"http://www.w3.org/1999/xhtml\"><!--<![endif]-->
-  %s
-</html>" (Cow.Html.to_string body)
+(*   Printf.sprintf "\ *)
+(* <!DOCTYPE html> *)
+(*   <!--[if IE 8]><html class=\"no-js lt-ie9\" lang=\"en\" xmlns=\"http://www.w3.org/1999/xhtml\"><![endif]--> *)
+(*   <!--[if gt IE 8]><!--><html class=\"no-js\" lang=\"en\" xmlns=\"http://www.w3.org/1999/xhtml\"><!--<![endif]--> *)
+(*   %s *)
+(* </html>"  *)
+    (Html.to_string body)
