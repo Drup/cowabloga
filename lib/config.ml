@@ -15,13 +15,15 @@
  *
  *)
 
+open Syndic
+
 (** An Atom feed: metadata plus a way to retrieve entries. *)
 type t = {
-  title: string;
-  subtitle: string option;
+  title: Atom.title;
+  subtitle: Atom.subtitle option;
   base_uri: string;
   id: string;
-  rights: string option;
-  author: Cow.Atom.author option;
-  read_entry: string -> Cow.Html.t Lwt.t;
+  rights: Atom.rights option;
+  author: Atom.author list;
+  read_entry: string -> Html5_types.div Html.elt Lwt.t;
 }

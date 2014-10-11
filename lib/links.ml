@@ -18,9 +18,8 @@
 
 open Printf
 open Lwt
-open Cow
-open Atom_feed
 open Date
+open Syndic
 
 (** Link stream *)
 type stream = {
@@ -30,6 +29,7 @@ type stream = {
 
 (* Individual link *)
 type t = {
+  author: Atom.author ;
   id: string;
   uri: Uri.t;
   title: string;
@@ -37,47 +37,49 @@ type t = {
   stream: stream;
 }
 
-let permalink feed l =
-  sprintf "%slinks/%s/%s" feed.base_uri l.stream.name l.id
+let permalink config l =
+  sprintf "%slinks/%s/%s" config.Config.base_uri l.stream.name l.id
 
-let atom_entry_of_link (feed:Atom_feed.t) l =
-  let perma_uri = Uri.of_string (permalink feed l) in
+let atom_entry_of_link config l =
+  let perma_uri = Uri.of_string (permalink config l) in
   let links = [
    (*  Atom.mk_link ~rel:`alternate ~typ:"text/html" perma_uri; *)
-    Atom.mk_link ~rel:`alternate ~typ:"text/html" l.uri;
+    Atom.mk_link ~rel:Alternate ~type_media:"text/html" l.uri;
   ] in
-  let content = <:html<<a href=$uri:l.uri$>$str:l.title$</a>, from $str:l.stream.name$>> in
-  let meta = {
-    Atom.id      = Uri.to_string perma_uri;
-    title        = l.title;
-    subtitle     = None;
-    author       = None;
-    updated      = atom_date l.date;
-    rights       = feed.rights;
-    links;
-  } in
-  return { Atom.entry = meta; summary= None; base= None; content }
+  let content =
+    Html.(span [
+      a ~a:[a_href @@ Uri.to_string l.uri] [pcdata l.title] ;
+      pcdata ", from" ; pcdata l.stream.name ;
+    ])
+  in
+  Lwt.return @@
+  Atom.mk_entry
+    ~id:(Uri.to_string perma_uri)
+    ~title:(Text l.title)
+    ~updated:(atom_date l.date)
+    ~authors:(l.author, [])
+    ?rights:config.rights
+    ~links
+    ~content:(Html.to_text content)
+    ()
 
 let cmp_ent a b =
-  Atom.compare (atom_date a.date) (atom_date b.date)
+  compare (atom_date a.date) (atom_date b.date)
 
-let to_atom ~feed ~entries =
-  let mk_uri x = Uri.of_string (feed.base_uri ^ x) in
+let to_atom ~config ~entries =
+  let {Config. title; subtitle; base_uri; id; rights; authors } = config in
+  let mk_uri x = Uri.of_string (base_uri ^ x) in
   let es = List.rev (List.sort cmp_ent entries) in
   let updated = atom_date (List.hd es).date in
-  let id = feed.base_uri ^ "links/" in
+  let id = base_uri ^ "links/" in
   let links = [
-    Atom.mk_link (mk_uri "atom.xml");
-    Atom.mk_link ~rel:`alternate ~typ:"text/html" (mk_uri "")
+    Atom.mk_link ~rel:Alternate (mk_uri "atom.xml");
+    Atom.mk_link ~rel:Alternate ~type_media:"text/html" (mk_uri "")
   ] in
-  lwt entries = Lwt_list.map_s (atom_entry_of_link feed) es in
-  let feed = {
-    Atom.id;
-    title = feed.Atom_feed.title;
-    subtitle = feed.subtitle;
-    author = feed.Atom_feed.author;
-    rights = feed.rights;
-    updated;
-    links
-  } in
-  return { Atom.feed=feed; entries }
+  lwt entries = Lwt_list.map_s (atom_entry_of_link config) es in
+  Lwt.return @@
+  Atom.mk_feed
+    ~id ~title ?subtitle
+    ?rights ~updated ~links
+    ~authors
+    entries
