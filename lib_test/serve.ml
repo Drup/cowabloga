@@ -24,8 +24,8 @@ open Cohttp_lwt_unix
 let make_server () =
   let callback conn_id req body =
     match Uri.path (Request.uri req) with
-    |""|"/" -> Server.respond_string ~status:`OK ~body:Site.index ()
-    |"/blog" -> Server.respond_string ~status:`OK ~body:Site.blog ()
+    |""|"/" -> Server.respond_string ~status:`OK ~body:(Cowabloga.Html.doc_to_string Site.index) ()
+    (* |"/blog" -> Server.respond_string ~status:`OK ~body:(Html.doc_to_string Site.blog) () *)
     |_ ->
        let fname = Server.resolve_file ~docroot:"lib_test" ~uri:(Request.uri req) in
        Server.respond_file ~fname ()

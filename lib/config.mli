@@ -1,6 +1,5 @@
 (*
  * Copyright (c) 2010-2013 Anil Madhavapeddy <anil@recoil.org>
- * Copyright (c) 2013 Richard Mortier <mort@cantab.net>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,34 +15,30 @@
  *
  *)
 
-open Syndic
+(** File system location. *)
+type directory = string
+type file = string
+type name = string
 
-type blog = {
-  path : string ; (* relative path *)
-  entries : entry list ;
+type page = [
+  | `Page of name * file
+  | `Html of name * (unit -> Html.doc)
+]
+
+type content = [
+  | page
+  | `Blog of name * directory
+  | `Wiki of name * directory
+  | `Links of name * file
+  | `Link of name * Uri.t
+  | `Menu of [ page | `Cat of name] * content list
+]
+
+type t = {
+  title: string;
+  subtitle: string option;
+  base_uri: string;
+  rights: Syndic.Atom.rights option;
+  authors: Person.t list;
+  read_file: string -> Html5_types.div Html.elt Lwt.t;
 }
-
-and entry = {
-  updated: Date.date;
-  authors: Atom.author list;
-  subject: string;
-  permalink: string;
-  body: [ `Div] Html.elt;
-}
-
-module Entry : sig
-  type t = entry
-  val permalink : blog -> entry -> string
-  val compare : t -> t -> int
-  val to_html : blog:blog -> entry:entry -> [> Html5_types.article ] Html.elt
-  val to_atom : blog -> entry -> Syndic.Atom.entry
-end
-
-val to_html :
-  ?sep:([> `Article | `Hr | `PCDATA ] as 'a) Html.elt ->
-  blog -> 'a Html5.M.elt list
-
-val to_atom : config:Config.t -> blog:blog -> Syndic.Atom.feed
-
-val recent_posts :
-  ?active:string -> blog -> Entry.t list -> Foundation.Sidebar.t list

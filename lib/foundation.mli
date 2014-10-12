@@ -20,12 +20,26 @@ module Link : sig
   type links = t list
 
   val link : ?cl:string list -> t -> [> `A of [> `PCDATA ] ] Html.elt
+end
 
-  val top_nav : ?align:[< `Left | `Right > `Right ] -> links
-    -> [> Html5_types.ul ] Html.elt
-  val button_group : links -> [> Html5_types.ul ] Html.elt
-  val side_nav : links -> [> Html5_types.ul ] Html.elt
-  val bottom_nav : links -> [> Html5_types.ul ] Html.elt
+module Button : sig
+  val group : Link.links -> [> Html5_types.ul ] Html.elt
+end
+
+module Nav : sig
+
+  type 'a t = ([
+    | `Li of Link.t
+    | `Ul of Link.t * 'a list
+  ] as 'a)
+
+  val of_content : Config.content list -> 'a t list
+
+  val top :
+    ?align:[< `Left | `Right > `Right ] -> 'a t list -> [> Html5_types.ul ] Html.elt
+  val side : 'a t list -> [> Html5_types.ul ] Html.elt
+  val bottom : 'a t list -> [> Html5_types.ul ] Html.elt
+
 end
 
 module Sidebar : sig
@@ -62,7 +76,7 @@ end
 val body:
   ?google_analytics:(string * string) -> ?highlight:string -> title:string ->
   headers:Html5_types.head_content_fun Html.elt list ->
-  content:([< Html5_types.body_content_fun > `Script ] as 'c) Html.elt ->
+  content:([< Html5_types.body_content_fun > `Script ] as 'c) Html.elt list ->
   trailers:'c Html.elt list -> unit -> [> `Html ] Html.elt
 
 val top_nav :
@@ -70,4 +84,4 @@ val top_nav :
   nav_links:[< Html5_types.section_content_fun ] Html.elt list ->
   [> Html5_types.div ] Html.elt
 
-val page: body:'a Html5.M.elt -> string
+val page: body:'a Html5.M.elt -> 'a Html5.M.elt

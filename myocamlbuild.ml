@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: 00b0e3523fa0a35add438794ec1e994a) *)
+(* DO NOT EDIT (digest: ed67af698358723987dbfed4c2e29f6b) *)
 module OASISGettext = struct
 (* # 22 "src/oasis/OASISGettext.ml" *)
 
@@ -318,7 +318,7 @@ module MyOCamlbuildFindlib = struct
 
   (* This lists all supported packages. *)
   let find_packages () =
-    List.map before_space (split_nl & run_and_read "ocamlfind list")
+    List.map before_space (split_nl & run_and_read (exec_from_conf "ocamlfind" ^ " list"))
 
 
   (* Mock to list available syntaxes. *)

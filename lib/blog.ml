@@ -25,8 +25,7 @@ open Config
 
 
 type blog = {
-  path : string ; (* complete path *)
-  icon: string ;
+  path : string ; (* relative path *)
   entries : entry list ;
 }
 
@@ -80,10 +79,10 @@ module Entry = struct
   (** [to_atom feed entry] *)
   let to_atom feed entry =
     let links = [
-      Atom.mk_link ~rel:Alternate ~type_media:"text/html"
+      Atom.link ~rel:Alternate ~type_media:"text/html"
         (Uri.of_string (permalink feed entry))
     ] in
-    Atom.mk_entry
+    Atom.entry
       ~id:(permalink feed entry)
       ~title:(Text entry.subject)
       ~authors:(List.hd entry.authors, List.tl entry.authors) (*TOFIX*)
@@ -118,11 +117,11 @@ let to_atom ~config:{Config. authors ; rights ; title ; subtitle } ~blog =
   let entries = List.sort Entry.compare blog.entries in
   let updated = Date.atom_date (List.hd entries).updated in
   let links = [
-    Atom.mk_link ~rel:Alternate (mk_uri "atom.xml");
-    Atom.mk_link ~rel:Alternate ~type_media:"text/html" (mk_uri "")
+    Atom.link ~rel:Alternate (mk_uri "atom.xml");
+    Atom.link ~rel:Alternate ~type_media:"text/html" (mk_uri "")
   ] in
   let entries = List.map (Entry.to_atom blog) entries in
-  Atom.mk_feed
+  Atom.feed
     ~title:(Text title) (* ?subtitle *) ?rights ~updated ~links (* from config *)
     ~id:blog.path
     ~authors

@@ -54,8 +54,8 @@ module Entry = struct
   let to_atom config list l =
     let perma_uri = Uri.of_string (permalink list l) in
     let links = [
-      (*  Atom.mk_link ~rel:`alternate ~typ:"text/html" perma_uri; *)
-      Atom.mk_link ~rel:Alternate ~type_media:"text/html" l.uri;
+      (*  Atom.link ~rel:`alternate ~typ:"text/html" perma_uri; *)
+      Atom.link ~rel:Alternate ~type_media:"text/html" l.uri;
     ] in
     let content =
       Html.(span [
@@ -63,7 +63,7 @@ module Entry = struct
           pcdata ", from" ; pcdata l.source.name ;
         ])
     in
-    Atom.mk_entry
+    Atom.entry
       ~id:(Uri.to_string perma_uri)
       ~title:(Text l.title)
       ~updated:(atom_date l.date)
@@ -82,11 +82,11 @@ let to_atom ~config ~links:list =
   let updated = atom_date (List.hd es).date in
   let id = base_uri ^ "links/" in
   let links = [
-    Atom.mk_link ~rel:Alternate (mk_uri "atom.xml");
-    Atom.mk_link ~rel:Alternate ~type_media:"text/html" (mk_uri "")
+    Atom.link ~rel:Alternate (mk_uri "atom.xml");
+    Atom.link ~rel:Alternate ~type_media:"text/html" (mk_uri "")
   ] in
   let entries = List.map (Entry.to_atom config list) es in
-  Atom.mk_feed
+  Atom.feed
     ~id ~title:(Text title) (* ?subtitle *)
     ?rights ~updated ~links
     ~authors

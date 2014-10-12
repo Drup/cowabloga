@@ -26,22 +26,66 @@ module Link = struct
     let items = List.map (fun x -> Html.li [x]) links in
     Html.(ul ~a:[a_class [cl]] items)
 
-  let top_nav ?(align=`Right) (links:links) =
-    let links = List.map link links in
+end
+
+module Nav = struct
+  open Link
+
+  type 'a t = ([
+    | `Li of Link.t
+    | `Ul of Link.t * 'a list
+  ] as 'a)
+
+  let of_content (content : Config.content list) : 'a t list =
+    let aux_page = function
+      | `Page (name, file) -> (name, Uri.of_string file)
+      | `Html (name, gen) -> (name, Uri.of_string name)
+    in
+    let rec aux = function
+      | #Config.page as page -> `Li (aux_page page)
+      | `Links (name, file) -> `Li (name, Uri.of_string file)
+      | `Link (name, uri) -> `Li (name, uri)
+      | `Blog (name, dir)
+      | `Wiki (name, dir) -> `Li (name, Uri.of_string dir)
+      | `Menu (index, list) ->
+          let main = match index with
+            | #Config.page as page -> aux_page page
+            | `Cat name -> (name, Uri.of_string "#")
+          in
+          `Ul (main, List.map aux list)
+    in List.map aux content
+
+  let rec make_li_nav : 'a t -> _ = function
+    | `Li link -> Html.li [Link.link link]
+    | `Ul ((name, href), list) ->
+        Html.(li ~a:[a_class ["has-dropdown"]] [
+            a ~a:[a_href @@ Uri.to_string href] [pcdata name] ;
+            ul (List.map make_li_nav list)
+          ])
+
+  let mk_ul_nav ~cl ~items = Html.(ul ~a:[a_class [cl]] items)
+
+  let top ?(align=`Right) (nav:'a t list) =
+    let items = List.map make_li_nav nav in
     let cl = match align with `Right -> "right" | `Left -> "left" in
-    mk_ul_links ~cl ~links
+    mk_ul_nav ~cl ~items
 
-  let button_group (links:links) =
-    let links = List.map (link ~cl:["button"]) links in
-    mk_ul_links ~cl:"button-group" ~links
+  let side (nav:'a t list) =
+    let items = List.map make_li_nav nav in
+    mk_ul_nav ~cl:"side-nav" ~items
 
-  let side_nav (links:links) =
-    let links = List.map link links in
-    mk_ul_links ~cl:"side-nav" ~links
+  let bottom (nav:'a t list) =
+    let items = List.map make_li_nav nav in
+    mk_ul_nav ~cl:"inline-list right" ~items
 
-  let bottom_nav (links:links) =
-    let links = List.map link links in
-    mk_ul_links ~cl:"inline-list right" ~links
+end
+
+module Button = struct
+
+  let group (links:Link.t list) =
+    let links = List.map (Link.link ~cl:["button"]) links in
+    Link.mk_ul_links ~cl:"button-group" ~links
+
 end
 
 module Sidebar = struct
@@ -182,7 +226,7 @@ let body ?google_analytics ?highlight
           headers
         ))
       (body (
-          content ::
+          content @
           script ~a:[a_src "/js/vendor/jquery.min.js"] (pcdata "") ::
           script ~a:[a_src "/js/foundation/foundation.min.js"] (pcdata "") ::
           script ~a:[a_src "/js/foundation/foundation.topbar.js"] (pcdata "") ::
@@ -213,4 +257,4 @@ let page ~body =
 (*   <!--[if gt IE 8]><!--><html class=\"no-js\" lang=\"en\" xmlns=\"http://www.w3.org/1999/xhtml\"><!--<![endif]--> *)
 (*   %s *)
 (* </html>"  *)
-    (Html.to_string body)
+    body

@@ -147,9 +147,9 @@ let permalink_exists x entries =
 let atom_entry_of_ent config wiki e =
   let perma_uri = Uri.of_string (permalink wiki e) in
   let links =
-    [ Atom.mk_link ~rel:Alternate ~type_media:"text/html" perma_uri ] in
+    [ Atom.link ~rel:Alternate ~type_media:"text/html" perma_uri ] in
   let content = body_of_entry e in
-  Atom.mk_entry
+  Atom.entry
     ~id:(Uri.to_string perma_uri)
     ~title:(Text e.subject)
     ~authors:(e.author, [])
@@ -166,11 +166,11 @@ let to_atom ~config ~wiki =
   let es = List.rev (List.sort cmp_ent wiki.entries) in
   let updated = atom_date (List.hd es).updated in
   let links = [
-    Atom.mk_link ~rel:Self (mk_uri "atom.xml");
-    Atom.mk_link ~rel:Alternate ~type_media:"text/html" (mk_uri "")
+    Atom.link ~rel:Self (mk_uri "atom.xml");
+    Atom.link ~rel:Alternate ~type_media:"text/html" (mk_uri "")
   ] in
   let entries = List.map (atom_entry_of_ent config wiki) es in
-  Atom.mk_feed
+  Atom.feed
     ~id:wiki.path ~title:(Text title) (* ?subtitle *)
     ?rights ~updated ~links
     ~authors:config.authors
