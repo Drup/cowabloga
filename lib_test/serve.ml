@@ -23,12 +23,17 @@ open Cohttp_lwt_unix
 
 let make_server () =
   let callback conn_id req body =
-    match Uri.path (Request.uri req) with
-    |""|"/" -> Server.respond_string ~status:`OK ~body:(Cowabloga.Html.doc_to_string Site.index) ()
-    (* |"/blog" -> Server.respond_string ~status:`OK ~body:(Html.doc_to_string Site.blog) () *)
-    |_ ->
-       let fname = Server.resolve_file ~docroot:"lib_test" ~uri:(Request.uri req) in
-       Server.respond_file ~fname ()
+    let path = Uri.path (Request.uri req) in
+    let rec make_page path = match Mirage_org.site path with
+      | Some (`Atom x) ->
+          Server.respond_string ~status:`OK ~body:Syndic.(XML.to_string @@ Atom.to_xml x) ()
+      | Some (`Html x) ->
+          Server.respond_string ~status:`OK ~body:(Cowabloga.Html.doc_to_string x) ()
+      | Some (`Redirect s) -> make_page s
+      |_ ->
+          let fname = Server.resolve_file ~docroot:"lib_test" ~uri:(Request.uri req) in
+          Server.respond_file ~fname ()
+    in make_page path
   in
   let conn_closed (_,conn_id) () =
     Printf.eprintf "conn %s closed\n%!" (Connection.to_string conn_id);

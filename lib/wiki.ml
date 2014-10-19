@@ -22,7 +22,7 @@ open Printf
 open Lwt
 open Syndic
 open Date
-open Config
+open Site
 
 
 type wiki = {
@@ -70,12 +70,12 @@ let html_of_entry ?(want_date=false) e =
     my_entry ;
   ]
 
-let html_of_index config =
-  lwt my_body = config.read_file "index.md" in (* TODO: make customizable *)
-  return @@ Html.(
-    div ~a:[a_class ["wiki_entry"]] [
-      div ~a:[a_class ["wiki_entry_body"]] [my_body]
-    ])
+(* let html_of_index config = *)
+(*   lwt my_body = config.read_file "index.md" in (\* TODO: make customizable *\) *)
+(*   return @@ Html.( *)
+(*     div ~a:[a_class ["wiki_entry"]] [ *)
+(*       div ~a:[a_class ["wiki_entry_body"]] [my_body] *)
+(*     ]) *)
 
 let permalink wiki e =
   sprintf "%s%s" wiki.path e.permalink
@@ -143,6 +143,8 @@ let cmp_ent a b =
 
 let permalink_exists x entries =
   List.exists (fun e -> e.permalink = x) entries
+
+let index_link wiki = sprintf "%s/index.html" wiki.path
 
 let atom_entry_of_ent config wiki e =
   let perma_uri = Uri.of_string (permalink wiki e) in

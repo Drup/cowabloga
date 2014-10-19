@@ -20,7 +20,7 @@ open Printf
 open Lwt
 open Date
 open Syndic
-open Config
+open Site
 
 type t = {
   path : string ; (* complete path *)
@@ -76,7 +76,7 @@ module Entry = struct
 end
 
 let to_atom ~config ~links:list =
-  let {Config. title; subtitle; base_uri; rights; authors } = config in
+  let {Site. title; subtitle; base_uri; rights; authors } = config in
   let mk_uri x = Uri.of_string (base_uri ^ x) in
   let es = List.rev (List.sort Entry.compare list.entries) in
   let updated = atom_date (List.hd es).date in

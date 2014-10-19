@@ -32,17 +32,17 @@ open Config
 
 
 
-let agregate ?(name="updates/atom.xml") ~config ~feeds =
+let aggregate ?(name="updates/atom.xml") ~config site =
   let l =
-    List.map (
-    function
-    | `Blog blog ->
-        (Some (Uri.of_string blog.Blog.path), Blog.to_atom ~config ~blog)
-    | `Wiki wiki ->
-        (Some (Uri.of_string wiki.Wiki.path), Wiki.to_atom ~config ~wiki)
-    | `Links links ->
-        (Some (Uri.of_string links.Links.path), Links.to_atom ~config ~links)
-  ) feeds
+    List.fold_left (fun l -> function
+      | `Blog blog ->
+          (Some (Uri.of_string blog.Blog.path), Blog.to_atom ~config ~blog) :: l
+      | `Wiki wiki ->
+          (Some (Uri.of_string wiki.Wiki.path), Wiki.to_atom ~config ~wiki) :: l
+      | `Links links ->
+          (Some (Uri.of_string links.Links.path), Links.to_atom ~config ~links) :: l
+      | _ -> l
+    ) [] site
   in
   Atom.aggregate
     ~id:(config.base_uri ^ name)

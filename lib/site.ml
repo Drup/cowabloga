@@ -21,8 +21,8 @@ type file = string
 type name = string
 
 type page = [
-  | `Page of name * file
-  | `Html of name * (unit -> Html.doc)
+  | `File of name * file
+  | `Html of name * [`Div] Html.elt
 ]
 
 type content = [
@@ -31,14 +31,13 @@ type content = [
   | `Wiki of name * directory
   | `Links of name * file
   | `Link of name * Uri.t
-  | `Menu of [ page | `Cat of name] * content list
+  | `Menu of page * content list
 ]
 
-type t = {
+type config = {
   title: string;
   subtitle: string option;
   base_uri: string;
   rights: Syndic.Atom.rights option;
   authors: Person.t list;
-  read_file: string -> Html5_types.div Html.elt Lwt.t;
 }

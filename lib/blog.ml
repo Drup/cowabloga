@@ -21,7 +21,7 @@
 open Printf
 open Lwt
 open Syndic
-open Config
+open Site
 
 
 type blog = {
@@ -59,22 +59,12 @@ module Entry = struct
     let permalink_disqus =
       sprintf "%s%s#disqus_thread" blog.path entry.permalink
     in
-    let authors =
-      List.map (fun { Atom.name ; uri } ->
-        let author_uri = match uri with
-          | None -> Uri.of_string "" (* TODO *)
-          | Some uri -> uri
-        in
-        name, author_uri)
-      entry.authors
-    in
-    let date = Date.html_of_date entry.updated in
     let title =
       let permalink = Uri.of_string (permalink blog entry) in
       entry.subject, permalink
     in
     let content = (content : [`Div] Html.elt :> [>`Div] Html.elt) in
-    Foundation.Blog.post ~title ~date ~authors ~content
+    Foundation.Blog.post ~title ~date:entry.updated ~authors:entry.authors ~content
 
   (** [to_atom feed entry] *)
   let to_atom feed entry =
@@ -111,7 +101,7 @@ let to_html ?(sep=default_separator) blog =
 
 (** [to_atom feed entries] generates a time-ordered ATOM RSS [feed] for a
     sequence of [entries]. *)
-let to_atom ~config:{Config. authors ; rights ; title ; subtitle } ~blog =
+let to_atom ~config:{ authors ; rights ; title ; subtitle } ~blog =
   let mk_uri x = Uri.of_string (blog.path ^ x) in
 
   let entries = List.sort Entry.compare blog.entries in
@@ -128,8 +118,8 @@ let to_atom ~config:{Config. authors ; rights ; title ; subtitle } ~blog =
     entries
 
 (** [recent_posts feed entries] . *)
-let recent_posts ?(active="") blog entries =
-  let entries = List.sort Entry.compare entries in
+let recent_posts ?(active="") blog =
+  let entries = List.sort Entry.compare blog.entries in
   List.map (fun e ->
       let link = Entry.(e.subject, Uri.of_string (Entry.permalink blog e)) in
       if e.subject = active then

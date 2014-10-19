@@ -43,7 +43,7 @@ val to_html :
   ?sep:([> `Article | `Hr | `PCDATA ] as 'a) Html.elt ->
   blog -> 'a Html5.M.elt list
 
-val to_atom : config:Config.t -> blog:blog -> Syndic.Atom.feed
+val to_atom : config:Site.config -> blog:blog -> Syndic.Atom.feed
 
 val recent_posts :
-  ?active:string -> blog -> Entry.t list -> Foundation.Sidebar.t list
+  ?active:string -> blog -> Foundation.Sidebar.t list

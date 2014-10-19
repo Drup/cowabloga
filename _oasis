@@ -11,7 +11,7 @@ Library cowabloga
   Path: lib
   Findlibname: cowabloga
   Pack: true
-  Modules: Config, Person, Date, Blog, Wiki, Links, Headers, Dispatch,
+  Modules: Site, Person, Date, Blog, Wiki, Links, Headers, Dispatch,
     Foundation, Html, Gen_site
   BuildDepends: threads, tyxml, syndic, lambdoc, lwt, lwt.syntax, omd, cstruct, re.str
 

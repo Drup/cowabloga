@@ -36,20 +36,20 @@ module Nav = struct
     | `Ul of Link.t * 'a list
   ] as 'a)
 
-  let of_content (content : Config.content list) : 'a t list =
+  let of_content (content : Site.content list) : 'a t list =
     let aux_page = function
-      | `Page (name, file) -> (name, Uri.of_string file)
+      | `File (name, file) -> (name, Uri.of_string file)
       | `Html (name, gen) -> (name, Uri.of_string name)
     in
     let rec aux = function
-      | #Config.page as page -> `Li (aux_page page)
+      | #Site.page as page -> `Li (aux_page page)
       | `Links (name, file) -> `Li (name, Uri.of_string file)
       | `Link (name, uri) -> `Li (name, uri)
       | `Blog (name, dir)
       | `Wiki (name, dir) -> `Li (name, Uri.of_string dir)
       | `Menu (index, list) ->
           let main = match index with
-            | #Config.page as page -> aux_page page
+            | #Site.page as page -> aux_page page
             | `Cat name -> (name, Uri.of_string "#")
           in
           `Ul (main, List.map aux list)
@@ -113,10 +113,9 @@ module Sidebar = struct
 end
 
 module Index = struct
-  let t ~top_nav =
+  let t =
     let content =
       Html.[
-        top_nav ;
         br () ;
         div ~a:[a_class ["row"]] [
           div ~a:[a_class ["large-12 columns"]] [
@@ -140,13 +139,13 @@ module Blog = struct
     let author = match authors with
       | [] -> []
       | _  ->
-          let a_nodes = intercalate (Html.pcdata ", ") (List.map link authors) in
+          let a_nodes = intercalate (Html.pcdata ", ") (List.map Person.to_html authors) in
           Html.(pcdata "By " :: a_nodes)
     in
     let title_text, title_uri = title in
     Html.(
       article [
-        date ;
+        Date.html_of_date date ;
         h4 [a ~a:[a_href @@ Uri.to_string title_uri] [pcdata title_text]] ;
         p [i author] ;
         content
@@ -227,8 +226,8 @@ let body ?google_analytics ?highlight
         ))
       (body (
           content @
-          script ~a:[a_src "/js/vendor/jquery.min.js"] (pcdata "") ::
-          script ~a:[a_src "/js/foundation/foundation.min.js"] (pcdata "") ::
+          script ~a:[a_src "/js/vendor/jquery.js"] (pcdata "") ::
+          script ~a:[a_src "/js/foundation.min.js"] (pcdata "") ::
           script ~a:[a_src "/js/foundation/foundation.topbar.js"] (pcdata "") ::
           script (pcdata "$(document).foundation();") ::
           highlight_trailer @
@@ -236,10 +235,12 @@ let body ?google_analytics ?highlight
         ))
   )
 
-let top_nav ~title:my_title ~title_uri ~nav_links =
+let a_data_topbar s = Html.Unsafe.string_attrib "data-topbar" s
+
+let top_nav_raw ~title:my_title ~title_uri ~nav_links =
   Html.(
     div ~a:[a_class ["contain-to-grid fixed"]] [
-      nav ~a:[a_class ["top-bar"]] [
+      nav ~a:[a_class ["top-bar"] ; a_data_topbar ""] [
         ul ~a:[a_class ["title-area"]] [
           li ~a:[a_class ["name"]] [h1 [a ~a:[a_href title_uri] [pcdata my_title]]] ;
           li ~a:[a_class ["toggle-topbar menu-icon"]] [
@@ -249,6 +250,13 @@ let top_nav ~title:my_title ~title_uri ~nav_links =
       ]
     ]
   )
+
+let top_nav ?(title_uri="/") (`Menu (page, categories)) =
+  match page with
+    | `File (title, _) | `Html (title, _) ->
+        top_nav_raw ~title ~title_uri
+          ~nav_links:[Nav.(top ~align:`Left @@ of_content categories)]
+
 
 let page ~body =
 (*   Printf.sprintf "\ *)

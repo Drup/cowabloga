@@ -33,7 +33,7 @@ module Nav : sig
     | `Ul of Link.t * 'a list
   ] as 'a)
 
-  val of_content : Config.content list -> 'a t list
+  val of_content : Site.content list -> 'a t list
 
   val top :
     ?align:[< `Left | `Right > `Right ] -> 'a t list -> [> Html5_types.ul ] Html.elt
@@ -54,14 +54,14 @@ module Sidebar : sig
 end
 
 module Index : sig
-  val t: top_nav:([> `Br | `Div ] as 'a) Html.elt -> 'a Html.elt list
+  val t: [> `Br | `Div ] Html.elt list
 end
 
 module Blog : sig
   val post:
-    title:string * Uri.t -> authors:(string * Uri.t) list ->
-    date:([< Html5_types.article_content_fun > `H4 `P ] as 'a) Html.elt ->
-    content:'a Html.elt -> [> Html5_types.article ] Html.elt
+    title:string * Uri.t -> authors:Person.t list -> date:Date.date ->
+    content:[< Html5_types.article_content_fun > `Div `H4 `P ]  Html.elt ->
+    [> Html5_types.article ] Html.elt
 
   val t:
     title:string ->
@@ -79,9 +79,14 @@ val body:
   content:([< Html5_types.body_content_fun > `Script ] as 'c) Html.elt list ->
   trailers:'c Html.elt list -> unit -> [> `Html ] Html.elt
 
-val top_nav :
+val top_nav_raw :
   title:string -> title_uri:string ->
   nav_links:[< Html5_types.section_content_fun ] Html.elt list ->
   [> Html5_types.div ] Html.elt
+
+val top_nav :
+  ?title_uri:string ->
+  [< `Menu of [< `Html of string * 'a | `File of string * 'b ] * Site.content list ] ->
+  [> `Div] Html.elt
 
 val page: body:'a Html5.M.elt -> 'a Html5.M.elt
