@@ -16,37 +16,42 @@
  *
  *)
 
+(** Wiki management: entries, ATOM feeds, etc. *)
+
 open Syndic
 
-type blog = {
-  path : string ;
-  entries : entry list ;
+type wiki = {
+  path : string;
+  entries : entry list;
 }
 
 and entry = {
-  date: Date.t;
-  authors: Person.t list;
-  title: string;
-  file: string;
-  body: Html5_types.div Html.elt;
+  date : Date.t;
+  author : Person.t;
+  title : string;
+  file : string;
+  body : Html5_types.div Html.elt;
 }
+
 
 module Entry : sig
   type t = entry
-  val permalink : blog -> entry -> string
-  val compare : t -> t -> int
-  val to_html : blog -> entry -> [> Html5_types.article ] Html.elt
-  val to_atom : Site.config -> blog -> entry -> Syndic.Atom.entry
+  val permalink : wiki -> entry -> string
+  val compare : entry -> entry -> int
+  val to_html :
+    ?want_date:bool -> wiki -> entry -> [> `Div | `H3 ] Html.elt list
+  val to_atom : Site.config -> wiki -> entry -> Syndic.Atom.entry
 end
 
-val permalink : blog -> Uri.t
-val feed_uri : blog -> Uri.t
+val permalink : wiki -> Uri.t
+val feed_uri : wiki -> Uri.t
 
 val to_html :
-  ?sep:([> `Article | `Hr | `PCDATA ] as 'a) Html.elt ->
-  blog -> 'a Html5.M.elt list
+  ?disqus:string ->
+  content:[< Html5_types.div_content_fun ] Html.elt Html.list_wrap ->
+  sidebar:[< Html5_types.aside_content_fun ] Html.elt Html.list_wrap ->
+  [> `Aside | `Div ] Html.elt list
 
-val to_atom : Site.config -> blog -> Syndic.Atom.feed
+val to_atom : config:Site.config -> wiki:wiki -> Syndic.Atom.feed
 
-val recent_posts :
-  ?active:string -> blog -> Foundation.Sidebar.t list
+val recent_updates : wiki -> Foundation.Sidebar.t list

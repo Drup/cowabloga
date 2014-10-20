@@ -94,7 +94,7 @@ module Sidebar = struct
     | `active_link of Link.t
     | `divider
     | `text of string
-    | `html of Html5_types.li_content Html.elt
+    | `html of Html5_types.li_content Html.elt list
   ]
 
   let t ~title:my_title ~content =
@@ -103,7 +103,7 @@ module Sidebar = struct
         |`link l -> Html.(li [Link.link l])
         |`active_link l -> Html.(li ~a:[a_class ["active"]] [Link.link l])
         |`divider -> Html.(li ~a:[a_class ["divider"]] [])
-        |`html h -> Html.(li [h])
+        |`html h -> Html.(li h)
         |`text t -> Html.(li [pcdata t])
     in
     Html.[

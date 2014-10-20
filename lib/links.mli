@@ -16,37 +16,29 @@
  *
  *)
 
-open Syndic
-
-type blog = {
-  path : string ;
-  entries : entry list ;
+type links = {
+  path : string;
+  entries : link list;
 }
 
-and entry = {
-  date: Date.t;
-  authors: Person.t list;
-  title: string;
-  file: string;
-  body: Html5_types.div Html.elt;
+and link = {
+  author : Person.t;
+  id : string;
+  uri : Uri.t;
+  title : string;
+  date : Date.t;
+  source : source;
 }
+and source = { name : string; icon : string; }
 
 module Entry : sig
-  type t = entry
-  val permalink : blog -> entry -> string
+  type t = link
+  val permalink : links -> t -> string
   val compare : t -> t -> int
-  val to_html : blog -> entry -> [> Html5_types.article ] Html.elt
-  val to_atom : Site.config -> blog -> entry -> Syndic.Atom.entry
+  val to_atom : Site.config -> links -> t -> Syndic.Atom.entry
 end
 
-val permalink : blog -> Uri.t
-val feed_uri : blog -> Uri.t
+val permalink : links -> Uri.t
+val feed_uri : links -> Uri.t
 
-val to_html :
-  ?sep:([> `Article | `Hr | `PCDATA ] as 'a) Html.elt ->
-  blog -> 'a Html5.M.elt list
-
-val to_atom : Site.config -> blog -> Syndic.Atom.feed
-
-val recent_posts :
-  ?active:string -> blog -> Foundation.Sidebar.t list
+val to_atom : Site.config -> links -> Syndic.Atom.feed

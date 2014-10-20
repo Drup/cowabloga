@@ -41,7 +41,7 @@ let blog_template blog entry =
   let recent_posts = Blog.recent_posts blog in
   let sidebar = Foundation.Sidebar.t ~title:"Recent Posts" ~content:recent_posts in
   let copyright = Html.pcdata "Anil Madhavapeddy" in
-  let content = Blog.Entry.to_html ~blog ~entry in
+  let content = Blog.Entry.to_html blog entry in
   let {Site. title; subtitle } = config in
   Foundation.Blog.t ~title ?subtitle ~sidebar ~posts:[content] ~copyright ()
 

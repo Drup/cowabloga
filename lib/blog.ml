@@ -19,7 +19,6 @@
 (** Blog management: entries, ATOM feeds, etc. *)
 
 open Printf
-open Lwt
 open Syndic
 open Site
 
@@ -30,11 +29,11 @@ type blog = {
 }
 
 and entry = {
-  updated: Date.t;
+  date: Date.t;
   authors: Atom.author list;
-  subject: string;
-  permalink: string;
-  body: [ `Div] Html.elt;
+  title: string;
+  file: string;
+  body: Html5_types.div Html.elt;
 }
 
 (** An Atom feed: metadata plus a way to retrieve entries. *)
@@ -46,36 +45,37 @@ module Entry = struct
 
   (** [permalink feed entry] returns the permalink URI for [entry] in [feed]. *)
   let permalink blog entry =
-    sprintf "%s%s" blog.path entry.permalink
+    sprintf "%s%s" blog.path entry.file
 
   (** Compare two entries. *)
-  let compare a b = Date.compare b.updated a.updated
+  let compare a b = Date.compare b.date a.date
 
   (** [to_html feed entry] converts a blog entry in the given feed into an
       Html.t fragment. *)
-  let to_html ~blog ~entry =
+  let to_html blog entry =
     let content = entry.body in
     let permalink_disqus =
-      sprintf "%s%s#disqus_thread" blog.path entry.permalink
+      sprintf "%s%s#disqus_thread" blog.path entry.file
     in
     let title =
       let permalink = Uri.of_string (permalink blog entry) in
-      entry.subject, permalink
+      entry.title, permalink
     in
     let content = (content : [`Div] Html.elt :> [>`Div] Html.elt) in
-    Foundation.Blog.post ~title ~date:entry.updated ~authors:entry.authors ~content
+    Foundation.Blog.post ~title ~date:entry.date ~authors:entry.authors ~content
 
   (** [to_atom feed entry] *)
-  let to_atom feed entry =
+  let to_atom config feed entry =
     let links = [
       Atom.link ~rel:Alternate ~type_media:"text/html"
         (Uri.of_string (permalink feed entry))
     ] in
     Atom.entry
       ~id:(permalink feed entry)
-      ~title:(Text entry.subject)
+      ~title:(Text entry.title)
       ~authors:(List.hd entry.authors, List.tl entry.authors) (*TOFIX*)
-      ~updated:(Date.to_cal entry.updated)
+      ~updated:(Date.to_cal entry.date)
+      ?rights:config.rights
       ~links
       ~content:(Html.to_text entry.body)
       ()
@@ -89,7 +89,7 @@ let default_separator = Html.hr ()
     by [sep], defaulting to [default_separator]. *)
 let to_html ?(sep=default_separator) blog =
   let rec concat = function
-    | [] -> [Html.entity "&"]
+    | [] -> []
     | hd::tl ->
       let hd = Entry.to_html blog hd in
       let tl = concat tl in
@@ -97,19 +97,22 @@ let to_html ?(sep=default_separator) blog =
   in
   concat (List.sort Entry.compare blog.entries)
 
+let permalink blog = Uri.of_string @@ sprintf "%sindex.html" blog.path
+
+let feed_uri blog = Uri.of_string @@ sprintf "%satom.xml" blog.path
 
 (** [to_atom feed entries] generates a time-ordered ATOM RSS [feed] for a
     sequence of [entries]. *)
-let to_atom ~config:{ authors ; rights ; title ; subtitle } ~blog =
+let to_atom ({ authors ; rights ; title ; subtitle } as config) blog =
   let mk_uri x = Uri.of_string (blog.path ^ x) in
 
   let entries = List.sort Entry.compare blog.entries in
-  let updated = Date.to_cal (List.hd entries).updated in
+  let updated = Date.to_cal (List.hd entries).date in
   let links = [
-    Atom.link ~rel:Alternate (mk_uri "atom.xml");
-    Atom.link ~rel:Alternate ~type_media:"text/html" (mk_uri "")
+    Atom.link ~rel:Self @@ feed_uri blog ;
+    Atom.link ~rel:Alternate ~type_media:"text/html" @@ permalink blog ;
   ] in
-  let entries = List.map (Entry.to_atom blog) entries in
+  let entries = List.map (Entry.to_atom config blog) entries in
   Atom.feed
     ~title:(Text title) (* ?subtitle *) ?rights ~updated ~links (* from config *)
     ~id:blog.path
@@ -120,8 +123,8 @@ let to_atom ~config:{ authors ; rights ; title ; subtitle } ~blog =
 let recent_posts ?(active="") blog =
   let entries = List.sort Entry.compare blog.entries in
   List.map (fun e ->
-      let link = Entry.(e.subject, Uri.of_string (Entry.permalink blog e)) in
-      if e.subject = active then
+      let link = (e.title, Uri.of_string (Entry.permalink blog e)) in
+      if e.title = active then
         `active_link link
       else
         `link link

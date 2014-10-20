@@ -61,4 +61,4 @@ true: annot, bin_annot
 <lib_test/*.ml{,i,y}>: use_cowabloga
 <lib_test/serve.{native,byte}>: custom
 # OASIS_STOP
-true: annot, bin_annot, principal, strict_sequence, debug, short_paths
+true: annot, bin_annot, principal, strict_sequence, debug, short_paths, warn(-40)

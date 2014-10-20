@@ -19,7 +19,6 @@
 (** Wiki management: entries, ATOM feeds, etc. *)
 
 open Printf
-open Lwt
 open Syndic
 open Site
 
@@ -30,35 +29,54 @@ type wiki = {
 }
 
 and entry = {
-  updated    : Date.t;
-  author     : Atom.author;
-  subject    : string;
-  body       : Html5_types.div Html.elt ;
-  permalink  : string;
+  date   : Date.t;
+  author : Atom.author;
+  title  : string;
+  file   : string;
+  body   : Html5_types.div Html.elt ;
 }
 
 let html_of_author (author : Atom.author) =
-  match author.Atom.uri with
-  | None     ->
-    Html.pcdata @@ ("Last modified by " ^ author.Atom.name)
-  | Some uri ->
-    Html.(span [
-      pcdata @@ "Last modified by " ;
-      a ~a:[a_href @@ Uri.to_string uri] [pcdata author.Atom.name] ;
-      ])
+  [ Html.pcdata "Last modified by " ; Person.to_html author ]
 
-let body_of_entry e =
-  (e.body : [`Div] Html.elt :> [> `Div] Html.elt) (* meh. *)
 
-let compare_dates e1 e2 = Date.compare e2.updated e1.updated
+module Entry = struct
 
-(* Convert a wiki record into an Html.t fragment *)
-let html_of_entry ?(want_date=false) e =
-  let my_entry = body_of_entry e in
-  return @@ Html.[
-    h3 [a ~a:[a_href e.permalink] [pcdata e.subject]] ;
-    my_entry ;
-  ]
+  type t = entry
+
+  let body e =
+    (e.body : [`Div] Html.elt :> [> `Div] Html.elt) (* meh. *)
+
+  let permalink wiki e =
+    sprintf "%s%s" wiki.path e.file
+
+  let compare e1 e2 = Date.compare e2.date e1.date
+
+  (* Convert a wiki record into an Html.t fragment *)
+  let to_html ?(want_date=false) wiki e =
+    let my_entry = body e in
+    Html.[
+      h3 [a ~a:[a_href @@ permalink wiki e] [pcdata e.title]] ;
+      my_entry ;
+    ]
+
+  let to_atom config wiki e =
+    let perma_uri = Uri.of_string (permalink wiki e) in
+    let links =
+      [ Atom.link ~rel:Alternate ~type_media:"text/html" perma_uri ] in
+    let content = body e in
+    Atom.entry
+      ~id:(Uri.to_string perma_uri)
+      ~title:(Text e.title)
+      ~authors:(e.author, [])
+      ~updated:(Date.to_cal e.date)
+      ?rights:config.rights
+      ~content:(Html (Html.to_string content))
+      ~links
+      ()
+
+end
+
 
 (* let html_of_index config = *)
 (*   lwt my_body = config.read_file "index.md" in (\* TODO: make customizable *\) *)
@@ -67,25 +85,10 @@ let html_of_entry ?(want_date=false) e =
 (*       div ~a:[a_class ["wiki_entry_body"]] [my_body] *)
 (*     ]) *)
 
-let permalink wiki e =
-  sprintf "%s%s" wiki.path e.permalink
 
-let html_of_recent_updates wiki id (entries:entry list) =
-  let ents = List.rev (List.sort compare_dates entries) in
-  let html_of_ent e =
-    Html.(
-      li [
-        a ~a:[a_href @@ permalink wiki e] [pcdata e.subject] ;
-        span ~a:[a_class ["lastmod"]] (Date.to_short_html e.updated)
-      ])
-  in
-  Html.[
-    h6 [pcdata "Recent Updates"] ;
-    ul ~a:[a_class ["side-nav"]] @@ List.map html_of_ent ents
-  ]
 
 (* Main wiki page; disqus comments are for full entry pages *)
-let html_of_page ?disqus ~content ~sidebar =
+let to_html ?disqus ~content ~sidebar =
 
   (* The disqus comment *)
   let disqus_html permalink =
@@ -107,14 +110,13 @@ let html_of_page ?disqus ~content ~sidebar =
      | Some perm  -> disqus_html perm
      | None      -> [] in
 
-  lwt content = content in
   let sidebar =
     match sidebar with
       | [] -> []
       | sidebar ->
           Html.[aside ~a:[a_class ["medium-3 large-3 columns panel"]] sidebar]
   in
-  return Html.(
+  Html.(
     div ~a:[a_class ["row"]] [
       div ~a:[a_class ["small-12"; "medium-10"; "large-9"; "columns"]] [
         h2 [pcdata "Documentation" ; small [pcdata " and guides"]]
@@ -128,39 +130,31 @@ let html_of_page ?disqus ~content ~sidebar =
       sidebar
   )
 
-let permalink_exists x entries =
-  List.exists (fun e -> e.permalink = x) entries
-
-let index_link wiki = sprintf "%s/index.html" wiki.path
-
-let atom_entry_of_ent config wiki e =
-  let perma_uri = Uri.of_string (permalink wiki e) in
-  let links =
-    [ Atom.link ~rel:Alternate ~type_media:"text/html" perma_uri ] in
-  let content = body_of_entry e in
-  Atom.entry
-    ~id:(Uri.to_string perma_uri)
-    ~title:(Text e.subject)
-    ~authors:(e.author, [])
-    ~updated:(Date.to_cal e.updated)
-    ?rights:config.rights
-    ~content:(Html (Html.to_string content))
-    ~links
-    ()
+let permalink wiki = Uri.of_string @@ sprintf "%sindex.html" wiki.path
+let feed_uri wiki = Uri.of_string @@ sprintf "%satom.xml" wiki.path
 
 let to_atom ~config ~wiki =
   let { title; subtitle; base_uri; rights } = config in
-  let mk_uri x = Uri.of_string (wiki.path ^ x) in
 
-  let es = List.rev (List.sort compare_dates wiki.entries) in
-  let updated = Date.to_cal (List.hd es).updated in
+  let entries = List.sort Entry.compare wiki.entries in
+  let updated = Date.to_cal (List.hd entries).date in
   let links = [
-    Atom.link ~rel:Self (mk_uri "atom.xml");
-    Atom.link ~rel:Alternate ~type_media:"text/html" (mk_uri "")
+    Atom.link ~rel:Self (feed_uri wiki);
+    Atom.link ~rel:Alternate ~type_media:"text/html" (permalink wiki)
   ] in
-  let entries = List.map (atom_entry_of_ent config wiki) es in
+  let entries = List.map (Entry.to_atom config wiki) entries in
   Atom.feed
     ~id:wiki.path ~title:(Text title) (* ?subtitle *)
     ?rights ~updated ~links
     ~authors:config.authors
     entries
+
+let recent_updates wiki =
+  let entries = List.sort Entry.compare wiki.entries in
+  let html_of_ent e =
+    `html Html.[
+        a ~a:[a_href @@ Entry.permalink wiki e] [pcdata e.title] ;
+        span ~a:[a_class ["lastmod"]] (Date.to_short_html e.date)
+      ]
+  in
+  List.map html_of_ent entries

@@ -48,7 +48,7 @@ module Sidebar : sig
     | `divider
     | `link of Link.t
     | `text of string
-    | `html of Html5_types.li_content Html.elt
+    | `html of Html5_types.li_content Html.elt list
   ]
   val t : title:string -> content:t list -> [> `H5 | `Ul ] Html.elt list
 end

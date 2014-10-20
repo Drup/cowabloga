@@ -5,7 +5,7 @@ type flat_content = [
   | `Html of name * [`Div] Html.elt
   | `Blog of Blog.blog
   | `Wiki of Wiki.wiki
-  | `Links of Links.t
+  | `Links of Links.links
 ]
 
 type flat_site = flat_content * flat_content list
@@ -50,17 +50,17 @@ let make_pages ~config ~decorate (c : flat_site) =
         List.iter
           (fun e -> add (Blog.Entry.permalink blog e) (`BlogEntry (blog, e)))
           blog.entries ;
-        add_feed (blog.path ^ "update.xml") @@ to_atom ~config ~blog
+        add_feed (blog.path ^ "update.xml") @@ to_atom config blog
     | `Wiki wiki ->
         let open Wiki in
         List.iter
-          (fun e -> add (wiki.path ^ e.subject) (`WikiEntry e.body))
+          (fun e -> add (wiki.path ^ e.title) (`WikiEntry e.body))
           wiki.entries ;
-        add_feed (wiki.path ^ "update.xml") @@ to_atom ~config ~wiki
+        add_feed (wiki.path ^ "update.xml") @@ to_atom config wiki
     | `Links links ->
         let open Links in
         add (links.path ^ ".html") (`Links links) ;
-        add_feed (links.path ^ ".xml") @@ to_atom ~config ~links
+        add_feed (links.path ^ ".xml") @@ to_atom config links
   in
   List.iter aux @@ snd c ;
   Hashtbl.add h "/" (`Redirect (get_path @@ fst c)) ;

@@ -17,12 +17,11 @@
  *)
 
 open Printf
-open Lwt
 open Syndic
 open Site
 
-type t = {
-  path : string ; (* complete path *)
+type links = {
+  path : string ;
   entries : link list ;
 }
 
@@ -45,12 +44,12 @@ module Entry = struct
   type t = link
 
   let permalink list l =
-    sprintf "%s%s" list.path l.id
+    sprintf "%s#%s" list.path l.id
 
-  let compare a b = Date.compare a.date b.date
+  let compare a b = Date.compare b.date a.date
 
-  let to_atom config list l =
-    let perma_uri = Uri.of_string (permalink list l) in
+  let to_atom config links l =
+    let perma_uri = Uri.of_string (permalink links l) in
     let links = [
       (*  Atom.link ~rel:`alternate ~typ:"text/html" perma_uri; *)
       Atom.link ~rel:Alternate ~type_media:"text/html" l.uri;
@@ -73,19 +72,20 @@ module Entry = struct
 
 end
 
-let to_atom ~config ~links:list =
+let permalink links = Uri.of_string @@ links.path
+let feed_uri links = Uri.of_string @@ sprintf "%satom.xml" links.path
+
+let to_atom config links =
   let {Site. title; subtitle; base_uri; rights; authors } = config in
-  let mk_uri x = Uri.of_string (base_uri ^ x) in
-  let es = List.rev (List.sort Entry.compare list.entries) in
-  let updated = Date.to_cal (List.hd es).date in
-  let id = base_uri ^ "links/" in
-  let links = [
-    Atom.link ~rel:Alternate (mk_uri "atom.xml");
-    Atom.link ~rel:Alternate ~type_media:"text/html" (mk_uri "")
+  let entries = List.sort Entry.compare links.entries in
+  let updated = Date.to_cal (List.hd entries).date in
+  let atom_links = [
+    Atom.link ~rel:Self (feed_uri links);
+    Atom.link ~rel:Alternate ~type_media:"text/html" (permalink links)
   ] in
-  let entries = List.map (Entry.to_atom config list) es in
+  let entries = List.map (Entry.to_atom config links) entries in
   Atom.feed
-    ~id ~title:(Text title) (* ?subtitle *)
-    ?rights ~updated ~links
+    ~id:links.path ~title:(Text title) (* ?subtitle *)
+    ?rights ~updated ~links:atom_links
     ~authors
     entries
