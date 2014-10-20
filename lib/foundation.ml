@@ -145,7 +145,7 @@ module Blog = struct
     let title_text, title_uri = title in
     Html.(
       article [
-        Date.html_of_date date ;
+        Date.to_html date ;
         h4 [a ~a:[a_href @@ Uri.to_string title_uri] [pcdata title_text]] ;
         p [i author] ;
         content

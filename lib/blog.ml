@@ -30,7 +30,7 @@ type blog = {
 }
 
 and entry = {
-  updated: Date.date;
+  updated: Date.t;
   authors: Atom.author list;
   subject: string;
   permalink: string;
@@ -49,8 +49,7 @@ module Entry = struct
     sprintf "%s%s" blog.path entry.permalink
 
   (** Compare two entries. *)
-  let compare a b =
-    compare (Date.atom_date b.updated) (Date.atom_date a.updated)
+  let compare a b = Date.compare b.updated a.updated
 
   (** [to_html feed entry] converts a blog entry in the given feed into an
       Html.t fragment. *)
@@ -76,7 +75,7 @@ module Entry = struct
       ~id:(permalink feed entry)
       ~title:(Text entry.subject)
       ~authors:(List.hd entry.authors, List.tl entry.authors) (*TOFIX*)
-      ~updated:(Date.atom_date entry.updated)
+      ~updated:(Date.to_cal entry.updated)
       ~links
       ~content:(Html.to_text entry.body)
       ()
@@ -105,7 +104,7 @@ let to_atom ~config:{ authors ; rights ; title ; subtitle } ~blog =
   let mk_uri x = Uri.of_string (blog.path ^ x) in
 
   let entries = List.sort Entry.compare blog.entries in
-  let updated = Date.atom_date (List.hd entries).updated in
+  let updated = Date.to_cal (List.hd entries).updated in
   let links = [
     Atom.link ~rel:Alternate (mk_uri "atom.xml");
     Atom.link ~rel:Alternate ~type_media:"text/html" (mk_uri "")

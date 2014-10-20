@@ -59,7 +59,7 @@ end
 
 module Blog : sig
   val post:
-    title:string * Uri.t -> authors:Person.t list -> date:Date.date ->
+    title:string * Uri.t -> authors:Person.t list -> date:Date.t ->
     content:[< Html5_types.article_content_fun > `Div `H4 `P ]  Html.elt ->
     [> Html5_types.article ] Html.elt
 

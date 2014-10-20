@@ -48,7 +48,7 @@ let long_string_of_month m =
 
 let xml_of_month m = Html.pcdata @@ short_string_of_month m
 
-type date = {
+type t = {
   month : month;
   day   : int;
   year  : int;
@@ -56,13 +56,7 @@ type date = {
   min   : int;
 }
 
-let html_of_date d =
-  let open Html in
-  span [pcdata @@ soi d.day ;
-        pcdata @@ long_string_of_month d.month ;
-        pcdata @@ soi d.year]
-
-let html_of_date d =
+let to_html d =
   let open Html in
   div ~a:[a_class ["date"]] [
     div ~a:[a_class ["month"]] [xml_of_month d.month] ;
@@ -72,11 +66,22 @@ let html_of_date d =
     div ~a:[a_class ["min"]]   [pcdata @@ soi d.min ] ;
 ]
 
+let to_short_html d =
+  Html.[
+    pcdata @@ Printf.sprintf "%i " d.day ;
+    xml_of_month d.month ;
+    pcdata @@ Printf.sprintf " %i" d.year ;
+  ]
+
+
 let date (year, month, day, hour, min) =
   { month; day; year; hour; min }
 
 let day (year, month, day) =
   { month; day; year; hour=0; min=0 }
 
-let atom_date d =
+let to_cal d =
   CalendarLib.Calendar.make d.year d.month d.day d.hour d.min 0
+
+let compare d1 d2 =
+  CalendarLib.Calendar.compare (to_cal d1) (to_cal d2)

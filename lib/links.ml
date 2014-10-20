@@ -18,7 +18,6 @@
 
 open Printf
 open Lwt
-open Date
 open Syndic
 open Site
 
@@ -32,7 +31,7 @@ and link = {
   id: string;
   uri: Uri.t;
   title: string;
-  date: Date.date;
+  date: Date.t;
   source : source ;
 }
 
@@ -48,8 +47,7 @@ module Entry = struct
   let permalink list l =
     sprintf "%s%s" list.path l.id
 
-  let compare a b =
-    compare (atom_date a.date) (atom_date b.date)
+  let compare a b = Date.compare a.date b.date
 
   let to_atom config list l =
     let perma_uri = Uri.of_string (permalink list l) in
@@ -66,7 +64,7 @@ module Entry = struct
     Atom.entry
       ~id:(Uri.to_string perma_uri)
       ~title:(Text l.title)
-      ~updated:(atom_date l.date)
+      ~updated:(Date.to_cal l.date)
       ~authors:(l.author, [])
       ?rights:config.rights
       ~links
@@ -79,7 +77,7 @@ let to_atom ~config ~links:list =
   let {Site. title; subtitle; base_uri; rights; authors } = config in
   let mk_uri x = Uri.of_string (base_uri ^ x) in
   let es = List.rev (List.sort Entry.compare list.entries) in
-  let updated = atom_date (List.hd es).date in
+  let updated = Date.to_cal (List.hd es).date in
   let id = base_uri ^ "links/" in
   let links = [
     Atom.link ~rel:Alternate (mk_uri "atom.xml");

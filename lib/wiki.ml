@@ -21,7 +21,6 @@
 open Printf
 open Lwt
 open Syndic
-open Date
 open Site
 
 
@@ -31,7 +30,7 @@ type wiki = {
 }
 
 and entry = {
-  updated    : date;
+  updated    : Date.t;
   author     : Atom.author;
   subject    : string;
   body       : Html5_types.div Html.elt ;
@@ -48,19 +47,10 @@ let html_of_author (author : Atom.author) =
       a ~a:[a_href @@ Uri.to_string uri] [pcdata author.Atom.name] ;
       ])
 
-let short_html_of_date d =
-  Html.[
-    pcdata @@ Printf.sprintf "%i " d.day ;
-    xml_of_month d.month ;
-    pcdata @@ Printf.sprintf " %i" d.year ;
-  ]
-
 let body_of_entry e =
   (e.body : [`Div] Html.elt :> [> `Div] Html.elt) (* meh. *)
 
-let compare_dates e1 e2 =
-  let d1 = e1.updated in let d2 = e2.updated in
-  compare (d1.year,d1.month,d1.day) (d2.year,d2.month,d2.day)
+let compare_dates e1 e2 = Date.compare e2.updated e1.updated
 
 (* Convert a wiki record into an Html.t fragment *)
 let html_of_entry ?(want_date=false) e =
@@ -86,7 +76,7 @@ let html_of_recent_updates wiki id (entries:entry list) =
     Html.(
       li [
         a ~a:[a_href @@ permalink wiki e] [pcdata e.subject] ;
-        span ~a:[a_class ["lastmod"]] (short_html_of_date e.updated)
+        span ~a:[a_class ["lastmod"]] (Date.to_short_html e.updated)
       ])
   in
   Html.[
@@ -138,9 +128,6 @@ let html_of_page ?disqus ~content ~sidebar =
       sidebar
   )
 
-let cmp_ent a b =
-  compare (atom_date a.updated) (atom_date b.updated)
-
 let permalink_exists x entries =
   List.exists (fun e -> e.permalink = x) entries
 
@@ -155,7 +142,7 @@ let atom_entry_of_ent config wiki e =
     ~id:(Uri.to_string perma_uri)
     ~title:(Text e.subject)
     ~authors:(e.author, [])
-    ~updated:(atom_date e.updated)
+    ~updated:(Date.to_cal e.updated)
     ?rights:config.rights
     ~content:(Html (Html.to_string content))
     ~links
@@ -165,8 +152,8 @@ let to_atom ~config ~wiki =
   let { title; subtitle; base_uri; rights } = config in
   let mk_uri x = Uri.of_string (wiki.path ^ x) in
 
-  let es = List.rev (List.sort cmp_ent wiki.entries) in
-  let updated = atom_date (List.hd es).updated in
+  let es = List.rev (List.sort compare_dates wiki.entries) in
+  let updated = Date.to_cal (List.hd es).updated in
   let links = [
     Atom.link ~rel:Self (mk_uri "atom.xml");
     Atom.link ~rel:Alternate ~type_media:"text/html" (mk_uri "")

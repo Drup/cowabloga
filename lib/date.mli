@@ -1,6 +1,5 @@
 (*
  * Copyright (c) 2010-2013 Anil Madhavapeddy <anil@recoil.org>
- * Copyright (c) 2013 Richard Mortier <mort@cantab.net>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,34 +15,26 @@
  *
  *)
 
-open Syndic
+(** Small date manipulation module. *)
 
-type blog = {
-  path : string ; (* relative path *)
-  entries : entry list ;
-}
+type month = int
 
-and entry = {
-  updated: Date.t;
-  authors: Atom.author list;
-  subject: string;
-  permalink: string;
-  body: [ `Div] Html.elt;
-}
+val short_string_of_month : int -> string
 
-module Entry : sig
-  type t = entry
-  val permalink : blog -> entry -> string
-  val compare : t -> t -> int
-  val to_html : blog:blog -> entry:entry -> [> Html5_types.article ] Html.elt
-  val to_atom : blog -> entry -> Syndic.Atom.entry
-end
+val long_string_of_month : int -> string
 
-val to_html :
-  ?sep:([> `Article | `Hr | `PCDATA ] as 'a) Html.elt ->
-  blog -> 'a Html5.M.elt list
+val xml_of_month : int -> [> `PCDATA ] Html.elt
 
-val to_atom : config:Site.config -> blog:blog -> Syndic.Atom.feed
 
-val recent_posts :
-  ?active:string -> blog -> Foundation.Sidebar.t list
+type t = { month : month; day : int; year : int; hour : int; min : int; }
+
+val to_html : t -> [> Html5_types.div ] Html.elt
+val to_short_html : t -> [> Html5_types.pcdata ] Html.elt list
+
+val date : int * month * int * int * int -> t
+
+val day : int * month * int -> t
+
+val to_cal : t -> CalendarLib.Calendar.t
+
+val compare : t -> t -> int
