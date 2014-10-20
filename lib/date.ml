@@ -16,7 +16,6 @@
  *)
 
 open Printf
-open Lwt
 
 let soi = string_of_int
 

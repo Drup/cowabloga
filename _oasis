@@ -11,9 +11,15 @@ Library cowabloga
   Path: lib
   Findlibname: cowabloga
   Pack: true
-  Modules: Site, Person, Date, Blog, Wiki, Links, Headers, Dispatch,
+  Modules: Site, Person, Date, Blog, Wiki, Links, Headers,
     Foundation, Html, Gen_site
-  BuildDepends: threads, tyxml, syndic, lambdoc, lwt, lwt.syntax, omd, cstruct, re.str
+  BuildDepends: threads, tyxml, syndic
+
+Library server
+  Path: lib/server
+  Findlibparent: cowabloga
+  Modules: Dispatch
+  BuildDepends: cowabloga, lwt, lwt.syntax, re, cohttp
 
 Executable cowabloga_test
   Path: lib_test
@@ -21,4 +27,4 @@ Executable cowabloga_test
   Custom:             true
   CompiledObject:     best
   Install:            false
-  BuildDepends:       cohttp.lwt (>= 0.10.0), cowabloga
+  BuildDepends:       cohttp.lwt (>= 0.10.0), omd, cowabloga, cowabloga.server

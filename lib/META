@@ -1,12 +1,22 @@
 # OASIS_START
-# DO NOT EDIT (digest: 8d33ae984cc48b9606345aeeba9ab1fc)
+# DO NOT EDIT (digest: 689fac7e35fceaa2d6a8c78e73a00fdb)
 version = "0.0.8"
 description = "Blog templates using Cow and Omd"
-requires = "threads tyxml syndic lambdoc lwt lwt.syntax omd cstruct re.str"
+requires = "threads tyxml syndic"
 archive(byte) = "cowabloga.cma"
 archive(byte, plugin) = "cowabloga.cma"
 archive(native) = "cowabloga.cmxa"
 archive(native, plugin) = "cowabloga.cmxs"
 exists_if = "cowabloga.cma"
+package "server" (
+ version = "0.0.8"
+ description = "Blog templates using Cow and Omd"
+ requires = "cowabloga lwt lwt.syntax re cohttp"
+ archive(byte) = "server.cma"
+ archive(byte, plugin) = "server.cma"
+ archive(native) = "server.cmxa"
+ archive(native, plugin) = "server.cmxs"
+ exists_if = "server.cma"
+)
 # OASIS_STOP
 

@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: f5e5f297c19b034ec0e375b1e84f021d)
+# DO NOT EDIT (digest: d6fe998b5e3bb2d6ece7124724d0dcf7)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -23,42 +23,45 @@ true: annot, bin_annot
 "lib/wiki.cmx": for-pack(Cowabloga)
 "lib/links.cmx": for-pack(Cowabloga)
 "lib/headers.cmx": for-pack(Cowabloga)
-"lib/dispatch.cmx": for-pack(Cowabloga)
 "lib/foundation.cmx": for-pack(Cowabloga)
 "lib/html.cmx": for-pack(Cowabloga)
 "lib/gen_site.cmx": for-pack(Cowabloga)
-<lib/*.ml{,i,y}>: pkg_cstruct
-<lib/*.ml{,i,y}>: pkg_lambdoc
-<lib/*.ml{,i,y}>: pkg_lwt
-<lib/*.ml{,i,y}>: pkg_lwt.syntax
-<lib/*.ml{,i,y}>: pkg_omd
-<lib/*.ml{,i,y}>: pkg_re.str
 <lib/*.ml{,i,y}>: pkg_syndic
 <lib/*.ml{,i,y}>: pkg_threads
 <lib/*.ml{,i,y}>: pkg_tyxml
+# Library server
+"lib/server/server.cmxs": use_server
+<lib/server/*.ml{,i,y}>: pkg_cohttp
+<lib/server/*.ml{,i,y}>: pkg_lwt
+<lib/server/*.ml{,i,y}>: pkg_lwt.syntax
+<lib/server/*.ml{,i,y}>: pkg_re
+<lib/server/*.ml{,i,y}>: pkg_syndic
+<lib/server/*.ml{,i,y}>: pkg_threads
+<lib/server/*.ml{,i,y}>: pkg_tyxml
+<lib/server/*.ml{,i,y}>: use_cowabloga
 # Executable cowabloga_test
+<lib_test/serve.{native,byte}>: pkg_cohttp
 <lib_test/serve.{native,byte}>: pkg_cohttp.lwt
-<lib_test/serve.{native,byte}>: pkg_cstruct
-<lib_test/serve.{native,byte}>: pkg_lambdoc
 <lib_test/serve.{native,byte}>: pkg_lwt
 <lib_test/serve.{native,byte}>: pkg_lwt.syntax
 <lib_test/serve.{native,byte}>: pkg_omd
-<lib_test/serve.{native,byte}>: pkg_re.str
+<lib_test/serve.{native,byte}>: pkg_re
 <lib_test/serve.{native,byte}>: pkg_syndic
 <lib_test/serve.{native,byte}>: pkg_threads
 <lib_test/serve.{native,byte}>: pkg_tyxml
 <lib_test/serve.{native,byte}>: use_cowabloga
+<lib_test/serve.{native,byte}>: use_server
+<lib_test/*.ml{,i,y}>: pkg_cohttp
 <lib_test/*.ml{,i,y}>: pkg_cohttp.lwt
-<lib_test/*.ml{,i,y}>: pkg_cstruct
-<lib_test/*.ml{,i,y}>: pkg_lambdoc
 <lib_test/*.ml{,i,y}>: pkg_lwt
 <lib_test/*.ml{,i,y}>: pkg_lwt.syntax
 <lib_test/*.ml{,i,y}>: pkg_omd
-<lib_test/*.ml{,i,y}>: pkg_re.str
+<lib_test/*.ml{,i,y}>: pkg_re
 <lib_test/*.ml{,i,y}>: pkg_syndic
 <lib_test/*.ml{,i,y}>: pkg_threads
 <lib_test/*.ml{,i,y}>: pkg_tyxml
 <lib_test/*.ml{,i,y}>: use_cowabloga
+<lib_test/*.ml{,i,y}>: use_server
 <lib_test/serve.{native,byte}>: custom
 # OASIS_STOP
 true: annot, bin_annot, principal, strict_sequence, debug, short_paths, warn(-40)
