@@ -18,10 +18,7 @@
 
 (** Blog management: entries, ATOM feeds, etc. *)
 
-open Printf
-open Syndic
 open Site
-
 
 type blog = {
   path : string ; (* relative path *)
@@ -30,7 +27,7 @@ type blog = {
 
 and entry = {
   date: Date.t;
-  authors: Atom.author list;
+  authors: Syndic.Atom.author list;
   title: string;
   file: string;
   body: Html5_types.div Html.elt;
@@ -45,7 +42,7 @@ module Entry = struct
 
   (** [permalink feed entry] returns the permalink URI for [entry] in [feed]. *)
   let permalink blog entry =
-    sprintf "%s%s" blog.path entry.file
+    Printf.sprintf "%s%s" blog.path entry.file
 
   (** Compare two entries. *)
   let compare a b = Date.compare b.date a.date
@@ -55,7 +52,7 @@ module Entry = struct
   let to_html blog entry =
     let content = entry.body in
     let permalink_disqus =
-      sprintf "%s%s#disqus_thread" blog.path entry.file
+      Printf.sprintf "%s%s#disqus_thread" blog.path entry.file
     in
     let title =
       let permalink = Uri.of_string (permalink blog entry) in
@@ -67,10 +64,10 @@ module Entry = struct
   (** [to_atom feed entry] *)
   let to_atom config feed entry =
     let links = [
-      Atom.link ~rel:Alternate ~type_media:"text/html"
+      Syndic.Atom.link ~rel:Alternate ~type_media:"text/html"
         (Uri.of_string (permalink feed entry))
     ] in
-    Atom.entry
+    Syndic.Atom.entry
       ~id:(permalink feed entry)
       ~title:(Text entry.title)
       ~authors:(List.hd entry.authors, List.tl entry.authors) (*TOFIX*)
@@ -97,9 +94,9 @@ let to_html ?(sep=default_separator) blog =
   in
   concat (List.sort Entry.compare blog.entries)
 
-let permalink blog = Uri.of_string @@ sprintf "%sindex.html" blog.path
+let permalink blog = Uri.of_string @@ Printf.sprintf "%sindex.html" blog.path
 
-let feed_uri blog = Uri.of_string @@ sprintf "%satom.xml" blog.path
+let feed_uri blog = Uri.of_string @@ Printf.sprintf "%satom.xml" blog.path
 
 (** [to_atom feed entries] generates a time-ordered ATOM RSS [feed] for a
     sequence of [entries]. *)
@@ -109,11 +106,11 @@ let to_atom ({ authors ; rights ; title ; subtitle } as config) blog =
   let entries = List.sort Entry.compare blog.entries in
   let updated = Date.to_cal (List.hd entries).date in
   let links = [
-    Atom.link ~rel:Self @@ feed_uri blog ;
-    Atom.link ~rel:Alternate ~type_media:"text/html" @@ permalink blog ;
+    Syndic.Atom.link ~rel:Self @@ feed_uri blog ;
+    Syndic.Atom.link ~rel:Alternate ~type_media:"text/html" @@ permalink blog ;
   ] in
   let entries = List.map (Entry.to_atom config blog) entries in
-  Atom.feed
+  Syndic.Atom.feed
     ~title:(Text title) (* ?subtitle *) ?rights ~updated ~links (* from config *)
     ~id:blog.path
     ~authors

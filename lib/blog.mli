@@ -16,7 +16,6 @@
  *
  *)
 
-open Syndic
 
 type blog = {
   path : string ;

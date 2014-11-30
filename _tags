@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: d6fe998b5e3bb2d6ece7124724d0dcf7)
+# DO NOT EDIT (digest: 5923bc99117b3176c849c310105fa4a4)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -29,6 +29,16 @@ true: annot, bin_annot
 <lib/*.ml{,i,y}>: pkg_syndic
 <lib/*.ml{,i,y}>: pkg_threads
 <lib/*.ml{,i,y}>: pkg_tyxml
+# Library frontend
+"lib/frontend/frontend.cmxs": use_frontend
+<lib/frontend/*.ml{,i,y}>: pkg_lambdoc
+<lib/frontend/*.ml{,i,y}>: pkg_omd
+<lib/frontend/*.ml{,i,y}>: pkg_sedlex
+<lib/frontend/*.ml{,i,y}>: pkg_syndic
+<lib/frontend/*.ml{,i,y}>: pkg_threads
+<lib/frontend/*.ml{,i,y}>: pkg_toml
+<lib/frontend/*.ml{,i,y}>: pkg_tyxml
+<lib/frontend/*.ml{,i,y}>: use_cowabloga
 # Library server
 "lib/server/server.cmxs": use_server
 <lib/server/*.ml{,i,y}>: pkg_cohttp

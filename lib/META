@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 689fac7e35fceaa2d6a8c78e73a00fdb)
+# DO NOT EDIT (digest: 66d6228ee36aeec93c5274bb183f9546)
 version = "0.0.8"
 description = "Blog templates using Cow and Omd"
 requires = "threads tyxml syndic"
@@ -17,6 +17,17 @@ package "server" (
  archive(native) = "server.cmxa"
  archive(native, plugin) = "server.cmxs"
  exists_if = "server.cma"
+)
+
+package "frontend" (
+ version = "0.0.8"
+ description = "Blog templates using Cow and Omd"
+ requires = "cowabloga lambdoc omd toml sedlex"
+ archive(byte) = "frontend.cma"
+ archive(byte, plugin) = "frontend.cma"
+ archive(native) = "frontend.cmxa"
+ archive(native, plugin) = "frontend.cmxs"
+ exists_if = "frontend.cma"
 )
 # OASIS_STOP
 

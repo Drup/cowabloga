@@ -15,6 +15,12 @@ Library cowabloga
     Foundation, Html, Gen_site
   BuildDepends: threads, tyxml, syndic
 
+Library frontend
+  Path: lib/frontend
+  Findlibparent: cowabloga
+  Modules: Cowalambdoc
+  BuildDepends: cowabloga, lambdoc, omd, toml, sedlex
+
 Library server
   Path: lib/server
   Findlibparent: cowabloga

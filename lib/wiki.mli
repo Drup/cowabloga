@@ -18,8 +18,6 @@
 
 (** Wiki management: entries, ATOM feeds, etc. *)
 
-open Syndic
-
 type wiki = {
   path : string;
   entries : entry list;
